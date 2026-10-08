@@ -12,3 +12,6 @@ PRODUCT_BUNDLE_IDENTIFIER = ir.poggernet.nativeDisplay
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 ir.poggernet. All rights reserved.
+
+// Swift Objective-C Bridging Header for CoreGraphics Virtual Display APIs
+SWIFT_OBJC_BRIDGING_HEADER = Runner/Runner-Bridging-Header.h

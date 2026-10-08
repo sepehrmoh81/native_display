@@ -93,7 +93,9 @@ class WebRTCManager extends ChangeNotifier {
     await _cleanupPeer();
 
     final targetSource = source ?? _selectedSource;
-    if (targetSource == null) {
+    if (targetSource != null) {
+      _selectedSource = targetSource;
+    } else {
       final sources = await refreshCaptureSources();
       if (sources.isNotEmpty) {
         _selectedSource = sources.first;

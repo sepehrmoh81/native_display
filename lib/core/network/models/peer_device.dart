@@ -44,7 +44,11 @@ class PeerDevice {
     DateTime? lastSeen,
   }) : lastSeen = lastSeen ?? DateTime.now();
 
-  String get endpoint => 'ws://$host:$port/ws';
+  String get endpoint {
+    final isIPv6 = host.contains(':') && !host.startsWith('[');
+    final formattedHost = isIPv6 ? '[$host]' : host;
+    return 'ws://$formattedHost:$port/ws';
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,

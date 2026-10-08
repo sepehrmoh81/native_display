@@ -19,6 +19,8 @@ class DiscoveryService extends ChangeNotifier {
   bool _isBroadcasting = false;
   bool get isBroadcasting => _isBroadcasting;
 
+  String? _broadcastId;
+
   bool _isScanning = false;
   bool get isScanning => _isScanning;
 
@@ -45,6 +47,8 @@ class DiscoveryService extends ChangeNotifier {
       screenHeight: screenHeight,
       refreshRate: refreshRate,
     );
+
+    _broadcastId = selfDevice.id;
 
     // 1. Bonsoir mDNS Broadcast
     try {
@@ -108,6 +112,7 @@ class DiscoveryService extends ChangeNotifier {
     _bonsoirBroadcast = null;
 
     _isBroadcasting = false;
+    _broadcastId = null;
     notifyListeners();
   }
 
@@ -195,6 +200,8 @@ class DiscoveryService extends ChangeNotifier {
   }
 
   void _addOrUpdateDevice(PeerDevice device) {
+    if (device.id == _broadcastId) return;
+
     final idx = _discoveredDevices.indexWhere((d) => d.id == device.id);
     if (idx >= 0) {
       _discoveredDevices[idx] = device;

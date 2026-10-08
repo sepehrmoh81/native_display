@@ -20,16 +20,17 @@ class SignalingClient {
 
     try {
       final uri = Uri.parse(url);
-      _channel = WebSocketChannel.connect(uri);
+      final channel = WebSocketChannel.connect(uri);
+      
+      await channel.ready;
+      
+      _channel = channel;
+      _isConnected = true;
+      onConnected?.call();
+      _startPing();
 
       _subscription = _channel!.stream.listen(
         (data) {
-          if (!_isConnected) {
-            _isConnected = true;
-            onConnected?.call();
-            _startPing();
-          }
-
           if (data is String) {
             try {
               final message = SignalingMessage.decode(data);
