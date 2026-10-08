@@ -58,6 +58,7 @@ class DiscoveryService extends ChangeNotifier {
         port: port,
         attributes: {
           'id': selfDevice.id,
+          'ip': selfDevice.host,
           'mode': mode.name,
           'platform': platform.name,
           'w': '$screenWidth',
@@ -125,13 +126,50 @@ class DiscoveryService extends ChangeNotifier {
     try {
       _bonsoirDiscovery = BonsoirDiscovery(type: AppConstants.bonjourServiceType);
       await _bonsoirDiscovery?.initialize();
-      _bonsoirDiscovery?.eventStream?.listen((event) {
+      _bonsoirDiscovery?.eventStream?.listen((event) async {
         if (event is BonsoirDiscoveryServiceFoundEvent) {
           event.service.resolve(_bonsoirDiscovery!.serviceResolver);
         } else if (event is BonsoirDiscoveryServiceResolvedEvent) {
           final s = event.service;
           final attrs = s.attributes;
-          final host = s.hostAddress ?? s.hostname ?? '127.0.0.1';
+
+          // 1. Try explicit IPv4 from broadcast attributes
+          String host = attrs['ip'] ?? '';
+
+          // 2. If host is missing or IPv6 link-local, check hostAddress
+          if (host.isEmpty || host.startsWith('fe80:') || host.contains('%')) {
+            final candidate = s.hostAddress;
+            if (candidate != null &&
+                !candidate.startsWith('fe80:') &&
+                !candidate.contains(':')) {
+              host = candidate;
+            }
+          }
+
+          // 3. If still not IPv4, attempt DNS lookup on hostname for IPv4 A-records
+          if (host.isEmpty || host.startsWith('fe80:') || host.contains(':')) {
+            final targetHostname = s.hostname;
+            if (targetHostname != null && targetHostname.isNotEmpty) {
+              try {
+                final resolved = await InternetAddress.lookup(
+                  targetHostname,
+                  type: InternetAddressType.IPv4,
+                );
+                for (final addr in resolved) {
+                  if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
+                    host = addr.address;
+                    break;
+                  }
+                }
+              } catch (_) {}
+            }
+          }
+
+          // 4. Final fallback
+          if (host.isEmpty) {
+            host = s.hostAddress ?? s.hostname ?? '127.0.0.1';
+          }
+
           final device = PeerDevice(
             id: attrs['id'] ?? s.name,
             name: s.name,
@@ -204,6 +242,11 @@ class DiscoveryService extends ChangeNotifier {
 
     final idx = _discoveredDevices.indexWhere((d) => d.id == device.id);
     if (idx >= 0) {
+      final existing = _discoveredDevices[idx];
+      // Prevent overwriting a valid IPv4 address with an IPv6 link-local address
+      if (!existing.host.contains(':') && device.host.contains(':')) {
+        device = device.copyWith(host: existing.host);
+      }
       _discoveredDevices[idx] = device;
     } else {
       _discoveredDevices.add(device);
@@ -228,9 +271,33 @@ class DiscoveryService extends ChangeNotifier {
         type: InternetAddressType.IPv4,
         includeLinkLocal: false,
       );
-      for (final iface in interfaces) {
+
+      // Prioritize physical Wi-Fi and Ethernet adapters over virtual adapters (WSL, Hyper-V, Docker)
+      final sorted = List<NetworkInterface>.from(interfaces)..sort((a, b) {
+        final aName = a.name.toLowerCase();
+        final bName = b.name.toLowerCase();
+        final aIsVirtual = aName.contains('vethernet') ||
+            aName.contains('wsl') ||
+            aName.contains('virtual') ||
+            aName.contains('docker') ||
+            aName.contains('utun') ||
+            aName.contains('vmware') ||
+            aName.contains('hyper-v');
+        final bIsVirtual = bName.contains('vethernet') ||
+            bName.contains('wsl') ||
+            bName.contains('virtual') ||
+            bName.contains('docker') ||
+            bName.contains('utun') ||
+            bName.contains('vmware') ||
+            bName.contains('hyper-v');
+        if (aIsVirtual && !bIsVirtual) return 1;
+        if (!aIsVirtual && bIsVirtual) return -1;
+        return 0;
+      });
+
+      for (final iface in sorted) {
         for (final addr in iface.addresses) {
-          if (!addr.isLoopback) {
+          if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
             return addr.address;
           }
         }

@@ -44,6 +44,32 @@ class PeerDevice {
     DateTime? lastSeen,
   }) : lastSeen = lastSeen ?? DateTime.now();
 
+  PeerDevice copyWith({
+    String? id,
+    String? name,
+    String? host,
+    int? port,
+    AppMode? mode,
+    DevicePlatform? platform,
+    int? screenWidth,
+    int? screenHeight,
+    int? refreshRate,
+    DateTime? lastSeen,
+  }) {
+    return PeerDevice(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      host: host ?? this.host,
+      port: port ?? this.port,
+      mode: mode ?? this.mode,
+      platform: platform ?? this.platform,
+      screenWidth: screenWidth ?? this.screenWidth,
+      screenHeight: screenHeight ?? this.screenHeight,
+      refreshRate: refreshRate ?? this.refreshRate,
+      lastSeen: lastSeen ?? this.lastSeen,
+    );
+  }
+
   String get endpoint {
     final isIPv6 = host.contains(':') && !host.startsWith('[');
     final formattedHost = isIPv6 ? '[$host]' : host;
