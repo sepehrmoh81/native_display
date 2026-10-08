@@ -489,7 +489,7 @@ class SenderView extends StatelessWidget {
                 ),
                 const SizedBox(height: AppleTheme.spacing2),
                 Text(
-                  'macOS requires explicit authorization to capture desktop displays via ScreenCaptureKit.',
+                  'macOS requires explicit authorization to capture desktop displays. If you recently toggled this in System Settings, macOS requires you to fully quit (Cmd+Q) and relaunch the app for permissions to take effect.',
                   style: AppleTheme.callout.copyWith(
                     color: CupertinoDynamicColor.resolve(
                       AppleTheme.secondaryLabel,

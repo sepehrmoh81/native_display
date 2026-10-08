@@ -15,3 +15,7 @@ PRODUCT_COPYRIGHT = Copyright © 2026 ir.poggernet. All rights reserved.
 
 // Swift Objective-C Bridging Header for CoreGraphics Virtual Display APIs
 SWIFT_OBJC_BRIDGING_HEADER = Runner/Runner-Bridging-Header.h
+
+// Stable designated requirement so macOS TCC remembers Screen Recording permission across rebuilds
+OTHER_CODE_SIGN_FLAGS = -r='designated => identifier "ir.poggernet.nativeDisplay"'
+
