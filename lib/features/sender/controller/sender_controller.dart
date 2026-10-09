@@ -260,6 +260,9 @@ class SenderController extends ChangeNotifier {
         targetCaptureSource ??= sources
             .where((s) => s.type == SourceType.Screen)
             .lastOrNull ?? sources.firstOrNull;
+
+        debugPrint('[SenderController] Found ${sources.length} sources: ${sources.map((s) => "${s.id}:${s.name}:${s.type.name}").join(", ")}');
+        debugPrint('[SenderController] Selected targetCaptureSource: ${targetCaptureSource?.id}:${targetCaptureSource?.name}');
       } else {
         // Mirror mode: use whatever source was selected in the UI
         targetCaptureSource = webrtcManager.selectedSource;

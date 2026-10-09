@@ -40,17 +40,30 @@ class SignalingMessage {
         if (targetId != null) 'targetId': targetId,
       };
 
-  factory SignalingMessage.fromJson(Map<String, dynamic> json) {
+  factory SignalingMessage.fromJson(Map<dynamic, dynamic> json) {
+    final rawData = json['data'];
+    final Map<String, dynamic> safeData;
+    if (rawData is Map) {
+      safeData = Map<String, dynamic>.from(rawData);
+    } else {
+      safeData = {};
+    }
+
     return SignalingMessage(
-      type: SignalingType.fromString(json['type'] as String? ?? 'error'),
-      data: (json['data'] as Map<String, dynamic>?) ?? {},
-      senderId: json['senderId'] as String? ?? '',
-      targetId: json['targetId'] as String?,
+      type: SignalingType.fromString(json['type']?.toString() ?? 'error'),
+      data: safeData,
+      senderId: json['senderId']?.toString() ?? '',
+      targetId: json['targetId']?.toString(),
     );
   }
 
   String encode() => jsonEncode(toJson());
 
-  factory SignalingMessage.decode(String raw) =>
-      SignalingMessage.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+  factory SignalingMessage.decode(String raw) {
+    final decoded = jsonDecode(raw);
+    if (decoded is Map) {
+      return SignalingMessage.fromJson(decoded);
+    }
+    throw const FormatException('Expected JSON map for SignalingMessage');
+  }
 }

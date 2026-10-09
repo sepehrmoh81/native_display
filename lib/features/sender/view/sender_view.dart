@@ -410,7 +410,9 @@ class SenderView extends StatelessWidget {
         ),
       SenderStatus.connecting => (
           AppleTheme.systemOrange,
-          'Creating Virtual Display...',
+          controller.streamMode == SenderStreamMode.extend
+              ? 'Connecting Display...'
+              : 'Connecting...',
           CupertinoIcons.arrow_2_circlepath,
         ),
       SenderStatus.searching => (

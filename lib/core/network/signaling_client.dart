@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'models/signaling_message.dart';
 
@@ -34,9 +35,10 @@ class SignalingClient {
           if (data is String) {
             try {
               final message = SignalingMessage.decode(data);
+              debugPrint('[SignalingClient] Dispatched incoming message: ${message.type.name}');
               onMessage?.call(message);
-            } catch (e) {
-              // Parse error
+            } catch (e, stack) {
+              debugPrint('[SignalingClient] Error processing incoming signaling data: $e\n$stack');
             }
           }
         },

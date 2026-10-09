@@ -124,6 +124,9 @@ class WebRTCManager extends ChangeNotifier {
       _peerConnection = await createPeerConnection(_buildConfiguration());
 
       _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
+        if (candidate.candidate == null || candidate.candidate!.trim().isEmpty) {
+          return;
+        }
         onSignalingMessageReady?.call(SignalingMessage(
           type: SignalingType.candidate,
           data: candidate.toMap(),
@@ -132,7 +135,11 @@ class WebRTCManager extends ChangeNotifier {
       };
 
       _peerConnection!.onConnectionState = (RTCPeerConnectionState state) {
-        _handleStateChange(state);
+        _handlePeerConnectionStateChange(state);
+      };
+
+      _peerConnection!.onIceConnectionState = (RTCIceConnectionState state) {
+        _handleIceConnectionStateChange(state);
       };
 
       // 3. Add video track to PeerConnection
@@ -140,11 +147,8 @@ class WebRTCManager extends ChangeNotifier {
         await _peerConnection!.addTrack(track, _localStream!);
       }
 
-      // 4. Create and send Offer
-      final offer = await _peerConnection!.createOffer({
-        'offerToReceiveVideo': 0,
-        'offerToReceiveAudio': 0,
-      });
+      // 4. Create and send Offer (Unified Plan)
+      final offer = await _peerConnection!.createOffer({});
 
       await _peerConnection!.setLocalDescription(offer);
 
@@ -174,6 +178,9 @@ class WebRTCManager extends ChangeNotifier {
       _peerConnection = await createPeerConnection(_buildConfiguration());
 
       _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
+        if (candidate.candidate == null || candidate.candidate!.trim().isEmpty) {
+          return;
+        }
         onSignalingMessageReady?.call(SignalingMessage(
           type: SignalingType.candidate,
           data: candidate.toMap(),
@@ -182,10 +189,15 @@ class WebRTCManager extends ChangeNotifier {
       };
 
       _peerConnection!.onConnectionState = (RTCPeerConnectionState state) {
-        _handleStateChange(state);
+        _handlePeerConnectionStateChange(state);
+      };
+
+      _peerConnection!.onIceConnectionState = (RTCIceConnectionState state) {
+        _handleIceConnectionStateChange(state);
       };
 
       _peerConnection!.onTrack = (RTCTrackEvent event) {
+        debugPrint('[WebRTCManager] onTrack: streams=${event.streams.length}, track=${event.track.id}');
         if (event.streams.isNotEmpty) {
           _remoteStream = event.streams[0];
           remoteRenderer.srcObject = _remoteStream;
@@ -205,93 +217,148 @@ class WebRTCManager extends ChangeNotifier {
   // --- SIGNALING MESSAGE DISPATCH ---
 
   Future<void> handleIncomingSignaling(SignalingMessage message) async {
-    switch (message.type) {
-      case SignalingType.offer:
-        if (_peerConnection == null) {
-          await prepareReceiverSession();
-        }
-        final sdp = RTCSessionDescription(
-          message.data['sdp'] as String?,
-          message.data['type'] as String?,
-        );
-        await _peerConnection!.setRemoteDescription(sdp);
-        _isRemoteDescriptionSet = true;
-        await _drainRemoteCandidatesQueue();
-
-        final answer = await _peerConnection!.createAnswer({
-          'offerToReceiveVideo': 1,
-          'offerToReceiveAudio': 0,
-        });
-        await _peerConnection!.setLocalDescription(answer);
-
-        onSignalingMessageReady?.call(SignalingMessage(
-          type: SignalingType.answer,
-          data: answer.toMap(),
-          senderId: 'receiver',
-        ));
-        break;
-
-      case SignalingType.answer:
-        if (_peerConnection != null) {
+    debugPrint('[WebRTCManager] handleIncomingSignaling: ${message.type.name} from ${message.senderId}');
+    try {
+      switch (message.type) {
+        case SignalingType.offer:
+          debugPrint('[WebRTCManager] Processing Offer...');
+          if (_peerConnection == null) {
+            await prepareReceiverSession();
+          }
           final sdp = RTCSessionDescription(
             message.data['sdp'] as String?,
-            message.data['type'] as String?,
+            (message.data['type'] as String?) ?? 'offer',
           );
           await _peerConnection!.setRemoteDescription(sdp);
           _isRemoteDescriptionSet = true;
+          debugPrint('[WebRTCManager] Set remote description (Offer)');
           await _drainRemoteCandidatesQueue();
-        }
-        break;
 
-      case SignalingType.candidate:
-        if (_peerConnection != null) {
-          final candidate = RTCIceCandidate(
-            message.data['candidate'] as String?,
-            message.data['sdpMid'] as String?,
-            message.data['sdpMLineIndex'] as int?,
-          );
-          if (_isRemoteDescriptionSet) {
-            await _peerConnection!.addCandidate(candidate);
+          final answer = await _peerConnection!.createAnswer({});
+          await _peerConnection!.setLocalDescription(answer);
+          debugPrint('[WebRTCManager] Set local description (Answer)');
+
+          onSignalingMessageReady?.call(SignalingMessage(
+            type: SignalingType.answer,
+            data: answer.toMap(),
+            senderId: 'receiver',
+          ));
+          break;
+
+        case SignalingType.answer:
+          debugPrint('[WebRTCManager] Processing Answer...');
+          if (_peerConnection != null) {
+            final sdp = RTCSessionDescription(
+              message.data['sdp'] as String?,
+              (message.data['type'] as String?) ?? 'answer',
+            );
+            await _peerConnection!.setRemoteDescription(sdp);
+            _isRemoteDescriptionSet = true;
+            debugPrint('[WebRTCManager] Set remote description (Answer) successfully!');
+            await _drainRemoteCandidatesQueue();
           } else {
-            _remoteCandidatesQueue.add(candidate);
+            debugPrint('[WebRTCManager] Warning: Received Answer but _peerConnection is null');
           }
-        }
-        break;
+          break;
 
-      case SignalingType.disconnect:
-        await stopSession();
-        break;
+        case SignalingType.candidate:
+          final candidateStr = message.data['candidate'] as String?;
+          if (candidateStr == null || candidateStr.trim().isEmpty) {
+            debugPrint('[WebRTCManager] Received end-of-candidates (null/empty candidate). Skipping.');
+            break;
+          }
+          final sdpMid = message.data['sdpMid'] as String?;
+          final sdpMLineIndex = (message.data['sdpMLineIndex'] as num?)?.toInt();
 
-      default:
-        break;
+          final candidate = RTCIceCandidate(
+            candidateStr,
+            sdpMid,
+            sdpMLineIndex,
+          );
+
+          if (_peerConnection != null) {
+            if (_isRemoteDescriptionSet) {
+              await _peerConnection!.addCandidate(candidate);
+              debugPrint('[WebRTCManager] Added remote ICE candidate: $candidateStr');
+            } else {
+              debugPrint('[WebRTCManager] Queued remote ICE candidate: $candidateStr');
+              _remoteCandidatesQueue.add(candidate);
+            }
+          }
+          break;
+
+        case SignalingType.disconnect:
+          debugPrint('[WebRTCManager] Received disconnect signal from peer');
+          await stopSession();
+          break;
+
+        default:
+          break;
+      }
+    } catch (e, stack) {
+      debugPrint('[WebRTCManager] Error in handleIncomingSignaling (${message.type.name}): $e\n$stack');
     }
   }
 
   Future<void> _drainRemoteCandidatesQueue() async {
+    debugPrint('[WebRTCManager] Draining ${_remoteCandidatesQueue.length} queued remote candidates...');
     for (final candidate in _remoteCandidatesQueue) {
-      await _peerConnection?.addCandidate(candidate);
+      try {
+        await _peerConnection?.addCandidate(candidate);
+      } catch (e) {
+        debugPrint('[WebRTCManager] Failed to add queued candidate: $e');
+      }
     }
     _remoteCandidatesQueue.clear();
   }
 
-  void _handleStateChange(RTCPeerConnectionState state) {
+  void _handlePeerConnectionStateChange(RTCPeerConnectionState state) {
+    debugPrint('[WebRTCManager] PeerConnectionState: $state');
     switch (state) {
       case RTCPeerConnectionState.RTCPeerConnectionStateConnected:
         _status = ConnectionStateStatus.connected;
+        notifyListeners();
         break;
       case RTCPeerConnectionState.RTCPeerConnectionStateConnecting:
         _status = ConnectionStateStatus.connecting;
+        notifyListeners();
         break;
       case RTCPeerConnectionState.RTCPeerConnectionStateDisconnected:
         _status = ConnectionStateStatus.disconnected;
+        notifyListeners();
         break;
       case RTCPeerConnectionState.RTCPeerConnectionStateFailed:
         _status = ConnectionStateStatus.failed;
+        notifyListeners();
         break;
       default:
         break;
     }
-    notifyListeners();
+  }
+
+  void _handleIceConnectionStateChange(RTCIceConnectionState state) {
+    debugPrint('[WebRTCManager] IceConnectionState: $state');
+    switch (state) {
+      case RTCIceConnectionState.RTCIceConnectionStateConnected:
+      case RTCIceConnectionState.RTCIceConnectionStateCompleted:
+        if (_status != ConnectionStateStatus.connected) {
+          _status = ConnectionStateStatus.connected;
+          notifyListeners();
+        }
+        break;
+      case RTCIceConnectionState.RTCIceConnectionStateDisconnected:
+        if (_status != ConnectionStateStatus.disconnected) {
+          _status = ConnectionStateStatus.disconnected;
+          notifyListeners();
+        }
+        break;
+      case RTCIceConnectionState.RTCIceConnectionStateFailed:
+        _status = ConnectionStateStatus.failed;
+        notifyListeners();
+        break;
+      default:
+        break;
+    }
   }
 
   void _startStatsMonitoring() {

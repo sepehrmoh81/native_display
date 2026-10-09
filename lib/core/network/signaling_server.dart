@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_web_socket/shelf_web_socket.dart';
@@ -33,10 +34,11 @@ class SignalingServer {
           try {
             if (data is String) {
               final message = SignalingMessage.decode(data);
+              debugPrint('[SignalingServer] Received signaling message: ${message.type.name}');
               onMessage?.call(message, channel);
             }
-          } catch (e) {
-            // Log/ignore malformed signaling packet
+          } catch (e, stack) {
+            debugPrint('[SignalingServer] Error processing signaling packet: $e\n$stack');
           }
         },
         onDone: () {
