@@ -11,6 +11,7 @@ import '../../../core/tray/tray_controller.dart';
 import '../../../core/webrtc/webrtc_manager.dart';
 import '../../../native/screen_capture_bridge.dart';
 import '../../../native/virtual_display_bridge.dart';
+import '../../settings/controller/settings_controller.dart';
 
 enum SenderStatus {
   idle,
@@ -28,6 +29,7 @@ enum SenderStreamMode {
 class SenderController extends ChangeNotifier {
   final DiscoveryService discoveryService;
   final WebRTCManager webrtcManager;
+  final SettingsController settingsController;
   final SignalingClient signalingClient = SignalingClient();
 
   SenderStatus _status = SenderStatus.idle;
@@ -52,22 +54,38 @@ class SenderController extends ChangeNotifier {
   VirtualDisplayInfo? _activeVirtualDisplay;
   VirtualDisplayInfo? get activeVirtualDisplay => _activeVirtualDisplay;
 
-  int _virtualWidth = 1920;
-  int get virtualWidth => _virtualWidth;
+  int get virtualWidth {
+    final (w, _) = settingsController.resolveDisplayDimensions(
+      receiverWidth: _selectedReceiver?.screenWidth,
+      receiverHeight: _selectedReceiver?.screenHeight,
+    );
+    return w;
+  }
 
-  int _virtualHeight = 1080;
-  int get virtualHeight => _virtualHeight;
+  int get virtualHeight {
+    final (_, h) = settingsController.resolveDisplayDimensions(
+      receiverWidth: _selectedReceiver?.screenWidth,
+      receiverHeight: _selectedReceiver?.screenHeight,
+    );
+    return h;
+  }
 
-  double _virtualFps = 60.0;
-  double get virtualFps => _virtualFps;
+  double get virtualFps {
+    if (settingsController.resolutionPreset == VirtualResolutionPreset.auto &&
+        _selectedReceiver != null &&
+        _selectedReceiver!.refreshRate > 0) {
+      return _selectedReceiver!.refreshRate.toDouble();
+    }
+    return settingsController.virtualFps;
+  }
 
-  bool _virtualHiDPI = true;
-  bool get virtualHiDPI => _virtualHiDPI;
+  bool get virtualHiDPI => settingsController.virtualHiDPI;
 
   SenderController({
     required this.discoveryService,
     required this.webrtcManager,
-  }) {
+    SettingsController? settingsController,
+  })  : settingsController = settingsController ?? SettingsController() {
     _init();
   }
 
@@ -175,18 +193,23 @@ class SenderController extends ChangeNotifier {
   }
 
   void setVirtualResolution(int width, int height) {
-    _virtualWidth = width;
-    _virtualHeight = height;
+    if (width == 1920 && height == 1080) {
+      settingsController.setResolutionPreset(VirtualResolutionPreset.fhd1080);
+    } else if (width == 2560 && height == 1440) {
+      settingsController.setResolutionPreset(VirtualResolutionPreset.qhd1440);
+    } else if (width == 3840 && height == 2160) {
+      settingsController.setResolutionPreset(VirtualResolutionPreset.uhd4k);
+    }
     notifyListeners();
   }
 
   void setVirtualFps(double fps) {
-    _virtualFps = fps;
+    settingsController.setVirtualFps(fps);
     notifyListeners();
   }
 
   void setVirtualHiDPI(bool enabled) {
-    _virtualHiDPI = enabled;
+    settingsController.setVirtualHiDPI(enabled);
     notifyListeners();
   }
 
@@ -234,10 +257,10 @@ class SenderController extends ChangeNotifier {
       if (_streamMode == SenderStreamMode.extend && Platform.isMacOS) {
         // 1. Create native macOS virtual display
         final virtualDisplay = await VirtualDisplayBridge.createVirtualDisplay(
-          width: _virtualWidth,
-          height: _virtualHeight,
-          refreshRate: _virtualFps,
-          hiDPI: _virtualHiDPI,
+          width: virtualWidth,
+          height: virtualHeight,
+          refreshRate: virtualFps,
+          hiDPI: virtualHiDPI,
           name: 'NativeDisplay - ${_selectedReceiver?.name ?? "Extended Screen"}',
         );
 
@@ -283,7 +306,8 @@ class SenderController extends ChangeNotifier {
       debugPrint('[SenderController] Target receiver: ${_selectedReceiver?.name} at ${_selectedReceiver?.endpoint}');
       await signalingClient.connect(_selectedReceiver!.endpoint);
 
-      // 5. Start WebRTC sender session with the target source
+      // 5. Sync quality config and start WebRTC sender session with the target source
+      webrtcManager.updateQualityConfig(settingsController.qualityConfig);
       await webrtcManager.startSenderSession(source: targetCaptureSource);
     } catch (e) {
       // If we created a virtual display but connection failed, clean it up

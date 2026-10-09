@@ -1,0 +1,598 @@
+{
+  "@@locale": "en",
+  "appName": "Native Display",
+  "@appName": {
+    "description": "The title of the application"
+  },
+  "appTagline": "High-Performance Display Extension",
+  "@appTagline": {
+    "description": "App subtitle displayed in the sidebar"
+  },
+  "systemReady": "System Ready",
+  "@systemReady": {
+    "description": "Status text when app is idle and ready"
+  },
+  "displayActive": "Display Active",
+  "@displayActive": {
+    "description": "Status text when display stream is active"
+  },
+
+  "navExtendDisplay": "Extend Display",
+  "@navExtendDisplay": {
+    "description": "Navigation item for extending display"
+  },
+  "navReceiveDisplay": "Receive Display",
+  "@navReceiveDisplay": {
+    "description": "Navigation item for receiving display"
+  },
+  "navDiagnostics": "Diagnostics",
+  "@navDiagnostics": {
+    "description": "Navigation item for diagnostics"
+  },
+  "navSettings": "Settings",
+  "@navSettings": {
+    "description": "Navigation item for settings"
+  },
+
+  "cancel": "Cancel",
+  "@cancel": {
+    "description": "Cancel button label"
+  },
+  "save": "Save",
+  "@save": {
+    "description": "Save button label"
+  },
+  "disconnect": "Disconnect",
+  "@disconnect": {
+    "description": "Disconnect button label"
+  },
+  "connecting": "Connecting...",
+  "@connecting": {
+    "description": "Connecting status label"
+  },
+  "enabled": "Enabled",
+  "@enabled": {
+    "description": "Enabled status text"
+  },
+  "disabled": "Disabled",
+  "@disabled": {
+    "description": "Disabled status text"
+  },
+
+  "senderTitle": "Extend Display",
+  "@senderTitle": {
+    "description": "Title of the sender screen"
+  },
+  "senderSubtitle": "Extend your desktop to a secondary display over low-latency Wi-Fi or LAN.",
+  "@senderSubtitle": {
+    "description": "Subtitle explaining the sender screen purpose"
+  },
+  "senderPermissionTitle": "Screen Recording Permission Required",
+  "@senderPermissionTitle": {
+    "description": "Permission alert title"
+  },
+  "senderPermissionMessage": "macOS requires screen recording authorization to capture displays. If recently granted in System Settings, quit and relaunch Native Display for changes to take effect.",
+  "@senderPermissionMessage": {
+    "description": "Permission alert description"
+  },
+  "senderPermissionButton": "Grant Permission",
+  "@senderPermissionButton": {
+    "description": "Button to request screen recording permission"
+  },
+  "modeExtend": "Extend Display (Virtual)",
+  "@modeExtend": {
+    "description": "Sender mode segment for virtual display extension"
+  },
+  "modeMirror": "Mirror Display or Window",
+  "@modeMirror": {
+    "description": "Sender mode segment for screen/window mirroring"
+  },
+  "sectionAvailableReceivers": "AVAILABLE RECEIVERS",
+  "@sectionAvailableReceivers": {
+    "description": "Section header for discovered display receivers"
+  },
+  "searchingReceivers": "Searching for Display Receivers...",
+  "@searchingReceivers": {
+    "description": "Empty state title when searching for receivers"
+  },
+  "searchingReceiversHint": "Ensure Native Display is open in Receive Display mode on your target computer on the same local network.",
+  "@searchingReceiversHint": {
+    "description": "Empty state guidance text"
+  },
+  "rescanReceivers": "Scan Network",
+  "@rescanReceivers": {
+    "description": "Button to trigger network rescan"
+  },
+  "sectionVirtualConfig": "VIRTUAL DISPLAY CONFIGURATION",
+  "@sectionVirtualConfig": {
+    "description": "Section header for virtual display settings"
+  },
+  "arrangeMacDisplays": "Arrange Displays in macOS Settings",
+  "@arrangeMacDisplays": {
+    "description": "Link button to open macOS display arrangement"
+  },
+  "targetResolution": "Target Resolution",
+  "@targetResolution": {
+    "description": "Label for virtual display resolution"
+  },
+  "matchReceiverResolution": "Match Receiver ({width}×{height})",
+  "@matchReceiverResolution": {
+    "description": "Option to match receiver screen resolution",
+    "placeholders": {
+      "width": { "type": "int" },
+      "height": { "type": "int" }
+    }
+  },
+  "refreshRate": "Refresh Rate",
+  "@refreshRate": {
+    "description": "Label for refresh rate setting"
+  },
+  "hidpiRetinaScaling": "HiDPI Retina Scaling",
+  "@hidpiRetinaScaling": {
+    "description": "Label for HiDPI switch"
+  },
+  "hidpiEnabled": "Enabled (Sharp text)",
+  "@hidpiEnabled": {
+    "description": "HiDPI enabled status text"
+  },
+  "hidpiDisabled": "Disabled (Standard 1× scaling)",
+  "@hidpiDisabled": {
+    "description": "HiDPI disabled status text"
+  },
+  "resolutionAuto": "Match Target Display (Auto)",
+  "@resolutionAuto": {
+    "description": "Virtual resolution preset to match receiver automatically"
+  },
+  "resolution1080p": "1080p FHD (1920×1080)",
+  "@resolution1080p": {
+    "description": "1080p FHD resolution option"
+  },
+  "resolution1440p": "1440p QHD (2560×1440)",
+  "@resolution1440p": {
+    "description": "1440p QHD resolution option"
+  },
+  "resolution4k": "4K UHD (3840×2160)",
+  "@resolution4k": {
+    "description": "4K UHD resolution option"
+  },
+  "senderSettingsHint": "Virtual display resolution, refresh rate, and quality presets are managed in Settings.",
+  "@senderSettingsHint": {
+    "description": "Hint on the sender tab pointing to settings"
+  },
+  "openSettings": "Open Settings",
+  "@openSettings": {
+    "description": "Button to navigate to settings"
+  },
+  "selectLanguageTitle": "Select Language",
+  "@selectLanguageTitle": {
+    "description": "Title of language selection sheet"
+  },
+  "sectionSourceDisplay": "SELECT DISPLAY OR WINDOW",
+  "@sectionSourceDisplay": {
+    "description": "Header for mirror source selection"
+  },
+  "noDisplaysFound": "No displays or windows found. Ensure screen recording permission is granted.",
+  "@noDisplaysFound": {
+    "description": "Warning message when no display sources found"
+  },
+  "fullScreenDisplay": "Full Screen Display",
+  "@fullScreenDisplay": {
+    "description": "Label for full screen capture source"
+  },
+  "appWindow": "Application Window",
+  "@appWindow": {
+    "description": "Label for window capture source"
+  },
+  "displayFallback": "Display {id}",
+  "@displayFallback": {
+    "description": "Fallback name for a display",
+    "placeholders": {
+      "id": { "type": "String" }
+    }
+  },
+  "startExtend": "Extend to {name}",
+  "@startExtend": {
+    "description": "Action button to start extending desktop",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "startMirror": "Mirror to {name}",
+  "@startMirror": {
+    "description": "Action button to start mirroring",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "disconnectDisplay": "Disconnect Display",
+  "@disconnectDisplay": {
+    "description": "Action button to disconnect display"
+  },
+  "virtualDisplayPreview": "VIRTUAL DISPLAY PREVIEW",
+  "@virtualDisplayPreview": {
+    "description": "Header for live virtual display preview"
+  },
+  "capturePreview": "LOCAL CAPTURE PREVIEW",
+  "@capturePreview": {
+    "description": "Header for live mirror capture preview"
+  },
+  "badgeVirtualActive": "VIRTUAL DISPLAY ACTIVE",
+  "@badgeVirtualActive": {
+    "description": "Badge overlay for virtual display"
+  },
+  "badgeStreamingActive": "LIVE STREAMING",
+  "@badgeStreamingActive": {
+    "description": "Badge overlay for live stream"
+  },
+  "statusVirtualActive": "Virtual Display Active",
+  "@statusVirtualActive": {
+    "description": "Status badge for active virtual display"
+  },
+  "statusMirrorActive": "Mirroring Active",
+  "@statusMirrorActive": {
+    "description": "Status badge for active mirror display"
+  },
+  "statusConnecting": "Connecting Display...",
+  "@statusConnecting": {
+    "description": "Status badge while connecting"
+  },
+  "statusScanning": "Scanning Network...",
+  "@statusScanning": {
+    "description": "Status badge while scanning LAN"
+  },
+  "statusError": "Connection Issue",
+  "@statusError": {
+    "description": "Status badge on connection error"
+  },
+  "statusReady": "Ready to Extend",
+  "@statusReady": {
+    "description": "Status badge when idle"
+  },
+
+  "receiverTitle": "Receive Display",
+  "@receiverTitle": {
+    "description": "Title of the receiver screen"
+  },
+  "receiverSubtitle": "Use this computer as a high-performance secondary display.",
+  "@receiverSubtitle": {
+    "description": "Subtitle explaining receiver purpose"
+  },
+  "statusListening": "Listening on Local Network",
+  "@statusListening": {
+    "description": "Receiver status pill when listening"
+  },
+  "receiverConnectionInfo": "Port: {port} • Local Discovery Active",
+  "@receiverConnectionInfo": {
+    "description": "Network info under device name",
+    "placeholders": {
+      "port": { "type": "int" }
+    }
+  },
+  "renameDevice": "Rename Device",
+  "@renameDevice": {
+    "description": "Button to rename receiver"
+  },
+  "renameDeviceTitle": "Rename Display Receiver",
+  "@renameDeviceTitle": {
+    "description": "Title of rename dialog"
+  },
+  "deviceNamePlaceholder": "Device Name",
+  "@deviceNamePlaceholder": {
+    "description": "Placeholder for device name input"
+  },
+  "enterFullscreen": "Enter Fullscreen",
+  "@enterFullscreen": {
+    "description": "Button to enter fullscreen"
+  },
+  "exitFullscreen": "Exit Fullscreen",
+  "@exitFullscreen": {
+    "description": "Button to exit fullscreen"
+  },
+  "sectionHowToConnect": "HOW TO CONNECT",
+  "@sectionHowToConnect": {
+    "description": "Section header for connection steps"
+  },
+  "step1Title": "Open Native Display on your primary computer.",
+  "@step1Title": {
+    "description": "First connection step"
+  },
+  "step2Title": "Select \"{deviceName}\" under Available Receivers.",
+  "@step2Title": {
+    "description": "Second connection step",
+    "placeholders": {
+      "deviceName": { "type": "String" }
+    }
+  },
+  "step3Title": "Click Extend or Mirror. Video will stream automatically with low-latency WebRTC.",
+  "@step3Title": {
+    "description": "Third connection step"
+  },
+  "receiverConnectedBadge": "Connected • Display Stream Active",
+  "@receiverConnectedBadge": {
+    "description": "Overlay status banner text when streaming"
+  },
+  "windowedMode": "Windowed",
+  "@windowedMode": {
+    "description": "Overlay button to restore windowed view"
+  },
+  "fullscreenMode": "Full Screen",
+  "@fullscreenMode": {
+    "description": "Overlay button to maximize to fullscreen"
+  },
+
+  "diagnosticsTitle": "Diagnostics & Performance",
+  "@diagnosticsTitle": {
+    "description": "Title of diagnostics view"
+  },
+  "diagnosticsSubtitle": "Real-time stream telemetry, network latency, and WebRTC pipeline metrics.",
+  "@diagnosticsSubtitle": {
+    "description": "Subtitle of diagnostics view"
+  },
+  "metricFramerate": "STREAM FRAMERATE",
+  "@metricFramerate": {
+    "description": "Metric card title for FPS"
+  },
+  "metricFramerateTarget": "Target: {fps} FPS",
+  "@metricFramerateTarget": {
+    "description": "Framerate target subtitle",
+    "placeholders": {
+      "fps": { "type": "int" }
+    }
+  },
+  "metricLatency": "NETWORK LATENCY",
+  "@metricLatency": {
+    "description": "Metric card title for latency"
+  },
+  "metricLatencyLow": "Ultra-Low Latency",
+  "@metricLatencyLow": {
+    "description": "Latency subtitle when connected and low"
+  },
+  "metricLatencyStandby": "Standby",
+  "@metricLatencyStandby": {
+    "description": "Latency subtitle when idle"
+  },
+  "metricBandwidth": "BANDWIDTH USAGE",
+  "@metricBandwidth": {
+    "description": "Metric card title for bandwidth"
+  },
+  "metricBandwidthAllocated": "Allocated: {bitrate} Mbps",
+  "@metricBandwidthAllocated": {
+    "description": "Bandwidth allocated subtitle",
+    "placeholders": {
+      "bitrate": { "type": "int" }
+    }
+  },
+  "metricPacketLoss": "PACKET LOSS",
+  "@metricPacketLoss": {
+    "description": "Metric card title for packet loss"
+  },
+  "metricPacketLossNone": "Zero Dropped Packets",
+  "@metricPacketLossNone": {
+    "description": "Packet loss subtitle when zero"
+  },
+  "metricPacketLossDetected": "Network Congestion Detected",
+  "@metricPacketLossDetected": {
+    "description": "Packet loss subtitle when packets are dropped"
+  },
+  "sectionStreamingPipeline": "STREAMING PIPELINE",
+  "@sectionStreamingPipeline": {
+    "description": "Section header for pipeline details"
+  },
+  "capturePipelineLabel": "Screen Capture Pipeline",
+  "@capturePipelineLabel": {
+    "description": "Pipeline detail label for capture engine"
+  },
+  "capturePipelineMac": "Apple ScreenCaptureKit (macOS 12.3+)",
+  "@capturePipelineMac": {
+    "description": "Pipeline detail value for macOS capture"
+  },
+  "capturePipelineWin": "Desktop Duplication API (Windows)",
+  "@capturePipelineWin": {
+    "description": "Pipeline detail value for Windows capture"
+  },
+  "videoCodecLabel": "Video Codec",
+  "@videoCodecLabel": {
+    "description": "Pipeline detail label for codec"
+  },
+  "hardwareAccelerationLabel": "Hardware Acceleration",
+  "@hardwareAccelerationLabel": {
+    "description": "Pipeline detail label for hardware encoding"
+  },
+  "hardwareAccelerationDetails": "Enabled (Apple VideoToolbox / NVENC)",
+  "@hardwareAccelerationDetails": {
+    "description": "Pipeline detail value when hardware acceleration is active"
+  },
+  "signalingProtocolLabel": "Signaling Protocol",
+  "@signalingProtocolLabel": {
+    "description": "Pipeline detail label for signaling"
+  },
+  "signalingProtocolDetails": "WebSocket JSON-RPC (Port {port})",
+  "@signalingProtocolDetails": {
+    "description": "Pipeline detail value for signaling protocol",
+    "placeholders": {
+      "port": { "type": "int" }
+    }
+  },
+  "discoveryProtocolLabel": "Discovery Protocol",
+  "@discoveryProtocolLabel": {
+    "description": "Pipeline detail label for discovery"
+  },
+  "discoveryProtocolDetails": "mDNS (Bonjour) + UDP Multicast",
+  "@discoveryProtocolDetails": {
+    "description": "Pipeline detail value for discovery"
+  },
+
+  "settingsTitle": "Settings",
+  "@settingsTitle": {
+    "description": "Title of settings screen"
+  },
+  "settingsSubtitle": "Configure display streaming quality, network performance, and platform integrations.",
+  "@settingsSubtitle": {
+    "description": "Subtitle of settings screen"
+  },
+  "sectionLanguage": "LANGUAGE",
+  "@sectionLanguage": {
+    "description": "Section header for language settings"
+  },
+  "appLanguage": "App Language",
+  "@appLanguage": {
+    "description": "Label for language picker"
+  },
+  "languageSystem": "System Default",
+  "@languageSystem": {
+    "description": "System language option"
+  },
+  "languageEnglish": "English",
+  "@languageEnglish": {
+    "description": "English language option"
+  },
+  "languageSpanish": "Español",
+  "@languageSpanish": {
+    "description": "Spanish language option"
+  },
+  "languageGerman": "Deutsch",
+  "@languageGerman": {
+    "description": "German language option"
+  },
+  "sectionQualityPreset": "STREAMING QUALITY PRESET",
+  "@sectionQualityPreset": {
+    "description": "Section header for stream quality preset"
+  },
+  "qualityPresetFooter": "Current Target: {width}×{height} @ {fps} FPS ({bitrate} Mbps)",
+  "@qualityPresetFooter": {
+    "description": "Footer displaying active preset specifications",
+    "placeholders": {
+      "width": { "type": "int" },
+      "height": { "type": "int" },
+      "fps": { "type": "int" },
+      "bitrate": { "type": "int" }
+    }
+  },
+  "preset720p": "720p (30 FPS)",
+  "@preset720p": {
+    "description": "720p preset label"
+  },
+  "preset1080p": "1080p (60 FPS)",
+  "@preset1080p": {
+    "description": "1080p preset label"
+  },
+  "preset1440p": "1440p (60 FPS)",
+  "@preset1440p": {
+    "description": "1440p preset label"
+  },
+  "preset4k": "4K (60 FPS)",
+  "@preset4k": {
+    "description": "4K preset label"
+  },
+  "sectionEncoding": "ENCODING & PERFORMANCE",
+  "@sectionEncoding": {
+    "description": "Section header for encoding settings"
+  },
+  "sectionEncodingFooter": "Hardware acceleration leverages Apple VideoToolbox on macOS and NVENC/QuickSync on Windows.",
+  "@sectionEncodingFooter": {
+    "description": "Footer explaining hardware encoding acceleration"
+  },
+  "targetBitrate": "Target Bitrate",
+  "@targetBitrate": {
+    "description": "Label for target bitrate slider"
+  },
+  "hardwareAcceleration": "Hardware Accelerated Encoding",
+  "@hardwareAcceleration": {
+    "description": "Label for hardware acceleration switch"
+  },
+  "lowLatencyMode": "Ultra-Low Latency Mode",
+  "@lowLatencyMode": {
+    "description": "Label for low latency switch"
+  },
+  "lowLatencyHelper": "Minimizes buffering for instant cursor responsiveness.",
+  "@lowLatencyHelper": {
+    "description": "Helper note for low latency mode"
+  },
+  "sectionIntegration": "SYSTEM & PREFERENCES",
+  "@sectionIntegration": {
+    "description": "Section header for system integration settings"
+  },
+  "deviceName": "Device Name",
+  "@deviceName": {
+    "description": "Label for device name setting"
+  },
+  "virtualDisplayToggle": "Virtual Display Extension",
+  "@virtualDisplayToggle": {
+    "description": "Label for virtual display setting toggle"
+  },
+  "virtualDisplayHelper": "Creates an independent virtual display space instead of mirroring the current desktop.",
+  "@virtualDisplayHelper": {
+    "description": "Helper text explaining virtual display extension"
+  },
+  "autoConnect": "Auto-Connect on Launch",
+  "@autoConnect": {
+    "description": "Label for auto-connect setting"
+  },
+  "startMinimized": "Start in Menu Bar or System Tray",
+  "@startMinimized": {
+    "description": "Label for start minimized setting"
+  },
+
+  "trayStatus": "Native Display: {status}",
+  "@trayStatus": {
+    "description": "Tray menu status header",
+    "placeholders": {
+      "status": { "type": "String" }
+    }
+  },
+  "trayOpenWindow": "Open Native Display",
+  "@trayOpenWindow": {
+    "description": "Tray menu item to show window"
+  },
+  "trayStartStreaming": "Start Streaming",
+  "@trayStartStreaming": {
+    "description": "Tray menu item to start streaming"
+  },
+  "trayStopStreaming": "Stop Streaming",
+  "@trayStopStreaming": {
+    "description": "Tray menu item to stop streaming"
+  },
+  "trayAvailableReceivers": "Available Displays:",
+  "@trayAvailableReceivers": {
+    "description": "Tray menu section header for available displays"
+  },
+  "trayQuit": "Quit Native Display",
+  "@trayQuit": {
+    "description": "Tray menu item to quit app"
+  },
+
+  "errorSelectReceiverFirst": "Please select a target display receiver first.",
+  "@errorSelectReceiverFirst": {
+    "description": "Error when streaming is initiated without receiver"
+  },
+  "errorSignalingConnection": "Signaling connection error: {error}",
+  "@errorSignalingConnection": {
+    "description": "Error on signaling websocket failure",
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "errorPeerConnectionFailed": "WebRTC peer connection failed to establish.",
+  "@errorPeerConnectionFailed": {
+    "description": "Error on WebRTC failure"
+  },
+  "errorConnectionDropped": "Connection dropped unexpectedly.",
+  "@errorConnectionDropped": {
+    "description": "Error on sudden disconnect"
+  },
+  "errorCreateVirtualDisplay": "Failed to create native macOS virtual display.",
+  "@errorCreateVirtualDisplay": {
+    "description": "Error when virtual display creation fails"
+  },
+  "errorReceiverServiceStart": "Could not start receiver service: {error}",
+  "@errorReceiverServiceStart": {
+    "description": "Error when receiver service fails to start",
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "errorWebRtcNegotiation": "Connection lost or WebRTC negotiation failed.",
+  "@errorWebRtcNegotiation": {
+    "description": "Error on receiver WebRTC loss"
+  }
+}

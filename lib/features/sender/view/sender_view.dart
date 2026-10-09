@@ -3,16 +3,24 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../../../core/theme/apple_theme.dart';
 import '../../../core/theme/liquid_glass.dart';
+import '../../../l10n/app_localizations.dart';
 import '../controller/sender_controller.dart';
 import 'display_selector.dart';
 
 class SenderView extends StatelessWidget {
   final SenderController controller;
+  final VoidCallback? onOpenSettings;
 
-  const SenderView({super.key, required this.controller});
+  const SenderView({
+    super.key,
+    required this.controller,
+    this.onOpenSettings,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
@@ -20,79 +28,87 @@ class SenderView extends StatelessWidget {
         final isConnecting = controller.status == SenderStatus.connecting;
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(AppleTheme.spacing24),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppleTheme.spacing24,
+            vertical: AppleTheme.spacing20,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Screen Recording Permission Banner (macOS)
               if (!controller.hasScreenPermission)
-                _buildPermissionAlert(context),
+                _buildPermissionAlert(context, l10n),
 
               // Title Header
               Row(
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Extend Display',
-                        style: AppleTheme.title1.copyWith(
-                          color: AppleTheme.resolvedLabel(context),
-                        ),
-                      ),
-                      const SizedBox(height: AppleTheme.spacing4),
-                      Text(
-                        'Turn your Windows PC into a true native second monitor for your Mac.',
-                        style: AppleTheme.callout.copyWith(
-                          color: CupertinoDynamicColor.resolve(
-                            AppleTheme.secondaryLabel,
-                            context,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.senderTitle,
+                          style: AppleTheme.title1.copyWith(
+                            color: AppleTheme.resolvedLabel(context),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: AppleTheme.spacing4),
+                        Text(
+                          l10n.senderSubtitle,
+                          style: AppleTheme.callout.copyWith(
+                            color: CupertinoDynamicColor.resolve(
+                              AppleTheme.secondaryLabel,
+                              context,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const Spacer(),
-                  _buildStatusBadge(context),
+                  const SizedBox(width: AppleTheme.spacing16),
+                  _buildStatusBadge(context, l10n),
                 ],
               ),
 
               const SizedBox(height: AppleTheme.spacing20),
 
               // Mode Switcher (Extend vs Mirror)
-              _buildModeSwitcher(context),
+              _buildModeSwitcher(context, l10n),
 
-              const SizedBox(height: AppleTheme.spacing24),
+              const SizedBox(height: AppleTheme.spacing20),
 
               // Error banner if any
               if (controller.errorMessage != null)
                 _buildErrorBanner(context, controller.errorMessage!),
 
               // Discovered Receivers Section
-              _buildReceiversSection(context),
+              _buildReceiversSection(context, l10n),
 
-              const SizedBox(height: AppleTheme.spacing24),
-
-              // Configuration based on mode:
-              // In Extend mode: Virtual Display configuration card (NO source picker)
               // In Mirror mode: Screen & Window picker
-              if (controller.streamMode == SenderStreamMode.extend)
-                _buildVirtualDisplayConfigCard(context)
-              else
+              if (controller.streamMode == SenderStreamMode.mirror) ...[
+                const SizedBox(height: AppleTheme.spacing20),
                 DisplaySelector(
                   sources: controller.webrtcManager.availableSources,
                   selectedSource: controller.webrtcManager.selectedSource,
                   onSourceSelected: controller.selectSource,
                 ),
+              ],
 
               const SizedBox(height: AppleTheme.spacing24),
 
-              // Streaming Controls & Preview
-              _buildStreamControls(context, isStreaming, isConnecting),
+              // Streaming Controls
+              _buildStreamControls(context, l10n, isStreaming, isConnecting),
 
+              // Settings hint when idle in Extend mode
+              if (!isStreaming) ...[
+                const SizedBox(height: AppleTheme.spacing20),
+                _buildSettingsHint(context, l10n),
+              ],
+
+              // Live stream preview when active
               if (isStreaming) ...[
                 const SizedBox(height: AppleTheme.spacing24),
-                _buildLivePreview(context),
+                _buildLivePreview(context, l10n),
               ],
             ],
           ),
@@ -101,7 +117,7 @@ class SenderView extends StatelessWidget {
     );
   }
 
-  Widget _buildModeSwitcher(BuildContext context) {
+  Widget _buildModeSwitcher(BuildContext context, AppLocalizations l10n) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(4),
@@ -128,7 +144,7 @@ class SenderView extends StatelessWidget {
                 const Icon(CupertinoIcons.rectangle_split_3x1, size: 16),
                 const SizedBox(width: 8),
                 Text(
-                  'Extend Desktop (Virtual Display)',
+                  l10n.modeExtend,
                   style: AppleTheme.callout.copyWith(
                     fontWeight: controller.streamMode == SenderStreamMode.extend
                         ? FontWeight.w600
@@ -147,7 +163,7 @@ class SenderView extends StatelessWidget {
                 const Icon(CupertinoIcons.tv, size: 16),
                 const SizedBox(width: 8),
                 Text(
-                  'Mirror Screen / Window',
+                  l10n.modeMirror,
                   style: AppleTheme.callout.copyWith(
                     fontWeight: controller.streamMode == SenderStreamMode.mirror
                         ? FontWeight.w600
@@ -168,384 +184,7 @@ class SenderView extends StatelessWidget {
     );
   }
 
-  Widget _buildVirtualDisplayConfigCard(BuildContext context) {
-    final receiver = controller.selectedReceiver;
-    final currentRes = '${controller.virtualWidth}x${controller.virtualHeight}';
-
-    return Container(
-      padding: const EdgeInsets.all(AppleTheme.spacing20),
-      decoration: BoxDecoration(
-        color: CupertinoDynamicColor.resolve(
-          AppleTheme.secondarySystemBackground,
-          context,
-        ),
-        borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
-        border: Border.all(
-          color: CupertinoDynamicColor.resolve(AppleTheme.separator, context),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                CupertinoIcons.slider_horizontal_3,
-                size: 18,
-                color: AppleTheme.systemBlue,
-              ),
-              const SizedBox(width: AppleTheme.spacing8),
-              Text(
-                'VIRTUAL DISPLAY CONFIGURATION',
-                style: AppleTheme.caption.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                  color: AppleTheme.resolvedTertiaryLabel(context),
-                ),
-              ),
-              const Spacer(),
-              if (Platform.isMacOS)
-                CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: controller.openMacDisplaySettings,
-                  child: Row(
-                    children: [
-                      const Icon(CupertinoIcons.macwindow, size: 14),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Arrange Displays in macOS Settings',
-                        style: AppleTheme.footnote.copyWith(
-                          color: AppleTheme.systemBlue,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppleTheme.spacing16),
-
-          // Resolution Selection
-          Text(
-            'Target Resolution',
-            style: AppleTheme.headline.copyWith(
-              color: AppleTheme.resolvedLabel(context),
-            ),
-          ),
-          const SizedBox(height: AppleTheme.spacing8),
-          Wrap(
-            spacing: AppleTheme.spacing8,
-            runSpacing: AppleTheme.spacing8,
-            children: [
-              if (receiver != null)
-                _buildResolutionPill(
-                  context: context,
-                  label: 'Match Windows (${receiver.screenWidth}×${receiver.screenHeight})',
-                  width: receiver.screenWidth,
-                  height: receiver.screenHeight,
-                  isSelected: controller.virtualWidth == receiver.screenWidth &&
-                      controller.virtualHeight == receiver.screenHeight,
-                ),
-              _buildResolutionPill(
-                context: context,
-                label: '1080p FHD (1920×1080)',
-                width: 1920,
-                height: 1080,
-                isSelected: currentRes == '1920x1080',
-              ),
-              _buildResolutionPill(
-                context: context,
-                label: '1440p QHD (2560×1440)',
-                width: 2560,
-                height: 1440,
-                isSelected: currentRes == '2560x1440',
-              ),
-              _buildResolutionPill(
-                context: context,
-                label: '4K UHD (3840×2160)',
-                width: 3840,
-                height: 2160,
-                isSelected: currentRes == '3840x2160',
-              ),
-            ],
-          ),
-
-          const SizedBox(height: AppleTheme.spacing16),
-          Container(
-            height: 1,
-            color: CupertinoDynamicColor.resolve(AppleTheme.separator, context),
-          ),
-          const SizedBox(height: AppleTheme.spacing16),
-
-          // Refresh Rate & HiDPI Settings Row
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Refresh Rate',
-                      style: AppleTheme.headline.copyWith(
-                        color: AppleTheme.resolvedLabel(context),
-                      ),
-                    ),
-                    const SizedBox(height: AppleTheme.spacing8),
-                    CupertinoSlidingSegmentedControl<double>(
-                      groupValue: controller.virtualFps,
-                      children: {
-                        60.0: Text(
-                          '60 Hz',
-                          style: AppleTheme.footnote.copyWith(
-                            color: AppleTheme.resolvedLabel(context),
-                          ),
-                        ),
-                        120.0: Text(
-                          '120 Hz',
-                          style: AppleTheme.footnote.copyWith(
-                            color: AppleTheme.resolvedLabel(context),
-                          ),
-                        ),
-                      },
-                      onValueChanged: (fps) {
-                        if (fps != null) controller.setVirtualFps(fps);
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AppleTheme.spacing24),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'HiDPI Retina Scaling',
-                      style: AppleTheme.headline.copyWith(
-                        color: AppleTheme.resolvedLabel(context),
-                      ),
-                    ),
-                    const SizedBox(height: AppleTheme.spacing4),
-                    Row(
-                      children: [
-                        Text(
-                          controller.virtualHiDPI
-                              ? 'Enabled (Sharp text)'
-                              : 'Disabled (1x scaling)',
-                          style: AppleTheme.footnote.copyWith(
-                            color: CupertinoDynamicColor.resolve(
-                              AppleTheme.secondaryLabel,
-                              context,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        CupertinoSwitch(
-                          value: controller.virtualHiDPI,
-                          onChanged: controller.setVirtualHiDPI,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResolutionPill({
-    required BuildContext context,
-    required String label,
-    required int width,
-    required int height,
-    required bool isSelected,
-  }) {
-    return GestureDetector(
-      onTap: () => controller.setVirtualResolution(width, height),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppleTheme.spacing12,
-          vertical: AppleTheme.spacing8,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppleTheme.systemBlue.withValues(alpha: 0.15)
-              : CupertinoDynamicColor.resolve(
-                  AppleTheme.tertiarySystemFill,
-                  context,
-                ),
-          borderRadius: BorderRadius.circular(AppleTheme.radiusPill),
-          border: Border.all(
-            color: isSelected
-                ? AppleTheme.systemBlue
-                : CupertinoDynamicColor.resolve(AppleTheme.separator, context),
-            width: isSelected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Text(
-          label,
-          style: AppleTheme.footnote.copyWith(
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected
-                ? AppleTheme.systemBlue
-                : AppleTheme.resolvedLabel(context),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusBadge(BuildContext context) {
-    final (Color color, String text, IconData icon) = switch (controller.status) {
-      SenderStatus.streaming => (
-          AppleTheme.systemGreen,
-          controller.streamMode == SenderStreamMode.extend
-              ? 'Virtual Display Active'
-              : 'Mirroring Active',
-          CupertinoIcons.checkmark_alt_circle_fill,
-        ),
-      SenderStatus.connecting => (
-          AppleTheme.systemOrange,
-          controller.streamMode == SenderStreamMode.extend
-              ? 'Connecting Display...'
-              : 'Connecting...',
-          CupertinoIcons.arrow_2_circlepath,
-        ),
-      SenderStatus.searching => (
-          AppleTheme.systemBlue,
-          'Scanning LAN',
-          CupertinoIcons.radiowaves_right,
-        ),
-      SenderStatus.error => (
-          AppleTheme.systemRed,
-          'Connection Issue',
-          CupertinoIcons.exclamationmark_circle_fill,
-        ),
-      SenderStatus.idle => (
-          AppleTheme.systemGray,
-          'Ready to Extend',
-          CupertinoIcons.circle,
-        ),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppleTheme.spacing12,
-        vertical: AppleTheme.spacing8,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppleTheme.radiusPill),
-        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: AppleTheme.spacing8),
-          Text(
-            text,
-            style: AppleTheme.footnote.copyWith(
-              fontWeight: FontWeight.w600,
-              color: CupertinoDynamicColor.resolve(color as CupertinoDynamicColor, context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPermissionAlert(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppleTheme.spacing20),
-      padding: const EdgeInsets.all(AppleTheme.spacing16),
-      decoration: BoxDecoration(
-        color: CupertinoDynamicColor.resolve(
-          AppleTheme.systemOrange.withValues(alpha: 0.12),
-          context,
-        ),
-        borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
-        border: Border.all(color: AppleTheme.systemOrange.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            CupertinoIcons.lock_shield_fill,
-            color: AppleTheme.systemOrange,
-            size: 24,
-          ),
-          const SizedBox(width: AppleTheme.spacing16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Screen Recording Permission Required',
-                  style: AppleTheme.headline.copyWith(
-                    color: AppleTheme.resolvedLabel(context),
-                  ),
-                ),
-                const SizedBox(height: AppleTheme.spacing2),
-                Text(
-                  'macOS requires explicit authorization to capture desktop displays. If you recently toggled this in System Settings, macOS requires you to fully quit (Cmd+Q) and relaunch the app for permissions to take effect.',
-                  style: AppleTheme.callout.copyWith(
-                    color: CupertinoDynamicColor.resolve(
-                      AppleTheme.secondaryLabel,
-                      context,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          CupertinoButton.filled(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            onPressed: controller.requestPermission,
-            child: const Text('Allow Access', style: TextStyle(fontSize: 13)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorBanner(BuildContext context, String error) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppleTheme.spacing20),
-      padding: const EdgeInsets.all(AppleTheme.spacing12),
-      decoration: BoxDecoration(
-        color: CupertinoDynamicColor.resolve(
-          AppleTheme.systemRed.withValues(alpha: 0.12),
-          context,
-        ),
-        borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
-        border: Border.all(color: AppleTheme.systemRed.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            CupertinoIcons.exclamationmark_triangle_fill,
-            color: AppleTheme.systemRed,
-            size: 18,
-          ),
-          const SizedBox(width: AppleTheme.spacing12),
-          Expanded(
-            child: Text(
-              error,
-              style: AppleTheme.footnote.copyWith(
-                color: CupertinoColors.destructiveRed,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReceiversSection(BuildContext context) {
+  Widget _buildReceiversSection(BuildContext context, AppLocalizations l10n) {
     final receivers = controller.availableReceivers;
 
     return Column(
@@ -554,7 +193,7 @@ class SenderView extends StatelessWidget {
         Row(
           children: [
             Text(
-              'TARGET DISPLAY RECEIVER (WINDOWS)',
+              l10n.sectionAvailableReceivers,
               style: AppleTheme.caption.copyWith(
                 color: AppleTheme.resolvedTertiaryLabel(context),
               ),
@@ -588,14 +227,14 @@ class SenderView extends StatelessWidget {
                   ),
                   const SizedBox(height: AppleTheme.spacing8),
                   Text(
-                    'Searching for Windows Receivers on your Wi-Fi/LAN...',
+                    l10n.searchingReceivers,
                     style: AppleTheme.callout.copyWith(
                       color: AppleTheme.resolvedSecondaryLabel(context),
                     ),
                   ),
                   const SizedBox(height: AppleTheme.spacing4),
                   Text(
-                    'Ensure "Native Display" is open in Receiver mode on your Windows PC.',
+                    l10n.searchingReceiversHint,
                     style: AppleTheme.footnote.copyWith(
                       color: CupertinoDynamicColor.resolve(
                         AppleTheme.tertiaryLabel,
@@ -615,14 +254,7 @@ class SenderView extends StatelessWidget {
               final isSelected = controller.selectedReceiver?.id == receiver.id;
 
               return GestureDetector(
-                onTap: () {
-                  controller.selectReceiver(receiver);
-                  // Auto-preset virtual resolution to match receiver screen
-                  controller.setVirtualResolution(
-                    receiver.screenWidth,
-                    receiver.screenHeight,
-                  );
-                },
+                onTap: () => controller.selectReceiver(receiver),
                 child: Container(
                   width: 260,
                   padding: const EdgeInsets.all(AppleTheme.spacing16),
@@ -712,31 +344,62 @@ class SenderView extends StatelessWidget {
 
   Widget _buildStreamControls(
     BuildContext context,
+    AppLocalizations l10n,
     bool isStreaming,
     bool isConnecting,
   ) {
+    final targetName = controller.selectedReceiver?.name ?? '';
     final actionLabel = controller.streamMode == SenderStreamMode.extend
-        ? 'Extend Desktop to ${controller.selectedReceiver?.name ?? "Windows"}'
-        : 'Mirror Screen to ${controller.selectedReceiver?.name ?? "Windows"}';
+        ? l10n.startExtend(targetName)
+        : l10n.startMirror(targetName);
 
     return Row(
       children: [
-        if (isStreaming)
+        if (isStreaming) ...[
           CupertinoButton(
             color: CupertinoColors.destructiveRed,
             borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
             onPressed: controller.stopStreaming,
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(CupertinoIcons.stop_fill, size: 16),
-                SizedBox(width: AppleTheme.spacing8),
-                Text('Disconnect Display',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
+                const Icon(CupertinoIcons.stop_fill, size: 16),
+                const SizedBox(width: AppleTheme.spacing8),
+                Text(
+                  l10n.disconnectDisplay,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
               ],
             ),
-          )
-        else
+          ),
+          if (Platform.isMacOS && controller.streamMode == SenderStreamMode.extend) ...[
+            const SizedBox(width: AppleTheme.spacing12),
+            CupertinoButton(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              color: CupertinoDynamicColor.resolve(
+                AppleTheme.tertiarySystemFill,
+                context,
+              ),
+              borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
+              onPressed: controller.openMacDisplaySettings,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(CupertinoIcons.macwindow, size: 16),
+                  const SizedBox(width: AppleTheme.spacing8),
+                  Text(
+                    l10n.arrangeMacDisplays,
+                    style: TextStyle(
+                      color: AppleTheme.resolvedLabel(context),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ] else ...[
           CupertinoButton.filled(
             borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
             onPressed: isConnecting ? null : controller.startStreaming,
@@ -754,12 +417,13 @@ class SenderView extends StatelessWidget {
                   const SizedBox(width: AppleTheme.spacing8),
                 ],
                 Text(
-                  isConnecting ? 'Connecting...' : actionLabel,
+                  isConnecting ? l10n.connecting : actionLabel,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ],
             ),
           ),
+        ],
         const SizedBox(width: AppleTheme.spacing16),
         CupertinoButton(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -772,11 +436,14 @@ class SenderView extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(CupertinoIcons.refresh,
-                  size: 16, color: AppleTheme.resolvedLabel(context)),
+              Icon(
+                CupertinoIcons.refresh,
+                size: 16,
+                color: AppleTheme.resolvedLabel(context),
+              ),
               const SizedBox(width: AppleTheme.spacing8),
               Text(
-                'Rescan LAN',
+                l10n.rescanReceivers,
                 style: TextStyle(
                   color: AppleTheme.resolvedLabel(context),
                   fontSize: 13,
@@ -789,14 +456,85 @@ class SenderView extends StatelessWidget {
     );
   }
 
-  Widget _buildLivePreview(BuildContext context) {
+  Widget _buildSettingsHint(BuildContext context, AppLocalizations l10n) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppleTheme.spacing16,
+        vertical: AppleTheme.spacing12,
+      ),
+      decoration: BoxDecoration(
+        color: CupertinoDynamicColor.resolve(
+          AppleTheme.tertiarySystemFill,
+          context,
+        ),
+        borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
+        border: Border.all(
+          color: CupertinoDynamicColor.resolve(
+            AppleTheme.separator,
+            context,
+          ),
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            CupertinoIcons.info_circle,
+            size: 18,
+            color: CupertinoDynamicColor.resolve(
+              AppleTheme.secondaryLabel,
+              context,
+            ),
+          ),
+          const SizedBox(width: AppleTheme.spacing12),
+          Expanded(
+            child: Text(
+              l10n.senderSettingsHint,
+              style: AppleTheme.callout.copyWith(
+                color: AppleTheme.resolvedSecondaryLabel(context),
+              ),
+            ),
+          ),
+          if (onOpenSettings != null) ...[
+            const SizedBox(width: AppleTheme.spacing12),
+            CupertinoButton(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              color: CupertinoDynamicColor.resolve(
+                AppleTheme.secondarySystemBackground,
+                context,
+              ),
+              borderRadius: BorderRadius.circular(AppleTheme.radiusSmall),
+              onPressed: onOpenSettings,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(CupertinoIcons.gear_alt, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    l10n.openSettings,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppleTheme.resolvedLabel(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLivePreview(BuildContext context, AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           controller.streamMode == SenderStreamMode.extend
-              ? 'VIRTUAL DISPLAY LIVE PREVIEW'
-              : 'LOCAL CAPTURE PREVIEW',
+              ? l10n.virtualDisplayPreview
+              : l10n.capturePreview,
           style: AppleTheme.caption.copyWith(
             color: AppleTheme.resolvedTertiaryLabel(context),
           ),
@@ -845,8 +583,8 @@ class SenderView extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         controller.streamMode == SenderStreamMode.extend
-                            ? 'VIRTUAL DISPLAY ACTIVE'
-                            : 'LIVE STREAMING',
+                            ? l10n.badgeVirtualActive
+                            : l10n.badgeStreamingActive,
                         style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -861,6 +599,150 @@ class SenderView extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStatusBadge(BuildContext context, AppLocalizations l10n) {
+    final (Color color, String text, IconData icon) = switch (controller.status) {
+      SenderStatus.streaming => (
+          AppleTheme.systemGreen,
+          controller.streamMode == SenderStreamMode.extend
+              ? l10n.statusVirtualActive
+              : l10n.statusMirrorActive,
+          CupertinoIcons.checkmark_alt_circle_fill,
+        ),
+      SenderStatus.connecting => (
+          AppleTheme.systemOrange,
+          l10n.statusConnecting,
+          CupertinoIcons.arrow_2_circlepath,
+        ),
+      SenderStatus.searching => (
+          AppleTheme.systemBlue,
+          l10n.statusScanning,
+          CupertinoIcons.radiowaves_right,
+        ),
+      SenderStatus.error => (
+          AppleTheme.systemRed,
+          l10n.statusError,
+          CupertinoIcons.exclamationmark_circle_fill,
+        ),
+      SenderStatus.idle => (
+          AppleTheme.systemGreen,
+          l10n.statusReady,
+          CupertinoIcons.circle,
+        ),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 8,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppleTheme.radiusPill),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: AppleTheme.spacing8),
+          Text(
+            text,
+            style: AppleTheme.footnote.copyWith(
+              fontWeight: FontWeight.w600,
+              color: CupertinoDynamicColor.resolve(color as CupertinoDynamicColor, context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPermissionAlert(BuildContext context, AppLocalizations l10n) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppleTheme.spacing20),
+      padding: const EdgeInsets.all(AppleTheme.spacing16),
+      decoration: BoxDecoration(
+        color: CupertinoDynamicColor.resolve(
+          AppleTheme.systemOrange.withValues(alpha: 0.12),
+          context,
+        ),
+        borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
+        border: Border.all(color: AppleTheme.systemOrange.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            CupertinoIcons.lock_shield_fill,
+            color: AppleTheme.systemOrange,
+            size: 24,
+          ),
+          const SizedBox(width: AppleTheme.spacing16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.senderPermissionTitle,
+                  style: AppleTheme.headline.copyWith(
+                    color: AppleTheme.resolvedLabel(context),
+                  ),
+                ),
+                const SizedBox(height: AppleTheme.spacing2),
+                Text(
+                  l10n.senderPermissionMessage,
+                  style: AppleTheme.callout.copyWith(
+                    color: CupertinoDynamicColor.resolve(
+                      AppleTheme.secondaryLabel,
+                      context,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          CupertinoButton.filled(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            onPressed: controller.requestPermission,
+            child: Text(l10n.senderPermissionButton, style: const TextStyle(fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorBanner(BuildContext context, String error) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppleTheme.spacing20),
+      padding: const EdgeInsets.all(AppleTheme.spacing12),
+      decoration: BoxDecoration(
+        color: CupertinoDynamicColor.resolve(
+          AppleTheme.systemRed.withValues(alpha: 0.12),
+          context,
+        ),
+        borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
+        border: Border.all(color: AppleTheme.systemRed.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            CupertinoIcons.exclamationmark_triangle_fill,
+            color: AppleTheme.systemRed,
+            size: 18,
+          ),
+          const SizedBox(width: AppleTheme.spacing12),
+          Expanded(
+            child: Text(
+              error,
+              style: AppleTheme.footnote.copyWith(
+                color: CupertinoColors.destructiveRed,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

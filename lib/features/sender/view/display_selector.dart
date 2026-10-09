@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../../../core/theme/apple_theme.dart';
+import '../../../l10n/app_localizations.dart';
 
 class DisplaySelector extends StatelessWidget {
   final List<DesktopCapturerSource> sources;
@@ -16,6 +17,8 @@ class DisplaySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     if (sources.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(AppleTheme.spacing16),
@@ -36,7 +39,7 @@ class DisplaySelector extends StatelessWidget {
             const SizedBox(width: AppleTheme.spacing12),
             Expanded(
               child: Text(
-                'No display screens found. Ensure screen recording permission is granted.',
+                l10n.noDisplaysFound,
                 style: AppleTheme.footnote.copyWith(color: AppleTheme.resolvedTertiaryLabel(context)),
               ),
             ),
@@ -53,7 +56,10 @@ class DisplaySelector extends StatelessWidget {
             left: AppleTheme.spacing4,
             bottom: AppleTheme.spacing8,
           ),
-          child: Text('SOURCE DISPLAY TO STREAM', style: AppleTheme.caption.copyWith(color: AppleTheme.resolvedTertiaryLabel(context))),
+          child: Text(
+            l10n.sectionSourceDisplay,
+            style: AppleTheme.caption.copyWith(color: AppleTheme.resolvedTertiaryLabel(context)),
+          ),
         ),
         Wrap(
           spacing: AppleTheme.spacing12,
@@ -114,7 +120,9 @@ class DisplaySelector extends StatelessWidget {
                     ),
                     const SizedBox(height: AppleTheme.spacing8),
                     Text(
-                      source.name.isNotEmpty ? source.name : 'Display ${source.id}',
+                      source.name.isNotEmpty
+                          ? source.name
+                          : l10n.displayFallback(source.id),
                       style: AppleTheme.headline.copyWith(
                         fontSize: 13,
                         color: isSelected
@@ -129,7 +137,7 @@ class DisplaySelector extends StatelessWidget {
                     ),
                     const SizedBox(height: AppleTheme.spacing2),
                     Text(
-                      isScreen ? 'Full Screen Display' : 'App Window',
+                      isScreen ? l10n.fullScreenDisplay : l10n.appWindow,
                       style: AppleTheme.footnote.copyWith(color: AppleTheme.resolvedTertiaryLabel(context)),
                     ),
                   ],

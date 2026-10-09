@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import '../../../core/theme/apple_theme.dart';
 import '../../../core/webrtc/webrtc_manager.dart';
+import '../../../l10n/app_localizations.dart';
 
 class DiagnosticsView extends StatelessWidget {
   final WebRTCManager webrtcManager;
@@ -9,6 +11,8 @@ class DiagnosticsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return ListenableBuilder(
       listenable: webrtcManager,
       builder: (context, _) {
@@ -21,10 +25,13 @@ class DiagnosticsView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Diagnostics & Performance', style: AppleTheme.title1.copyWith(color: AppleTheme.resolvedLabel(context))),
+              Text(
+                l10n.diagnosticsTitle,
+                style: AppleTheme.title1.copyWith(color: AppleTheme.resolvedLabel(context)),
+              ),
               const SizedBox(height: AppleTheme.spacing4),
               Text(
-                'Real-time stream telemetry, round-trip latency, and WebRTC metrics.',
+                l10n.diagnosticsSubtitle,
                 style: AppleTheme.callout.copyWith(
                   color: CupertinoDynamicColor.resolve(
                     AppleTheme.secondaryLabel,
@@ -40,28 +47,28 @@ class DiagnosticsView extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _MetricCard(
-                      title: 'STREAM FRAMERATE',
+                      title: l10n.metricFramerate,
                       value: isConnected
                           ? '${metrics.fps.toStringAsFixed(1)} FPS'
                           : '-- FPS',
                       statusColor: isConnected && metrics.fps >= 55
                           ? AppleTheme.systemGreen
                           : AppleTheme.systemOrange,
-                      subtitle: 'Target: ${webrtcManager.qualityConfig.effectiveFps} FPS',
+                      subtitle: l10n.metricFramerateTarget(webrtcManager.qualityConfig.effectiveFps),
                       icon: CupertinoIcons.speedometer,
                     ),
                   ),
                   const SizedBox(width: AppleTheme.spacing16),
                   Expanded(
                     child: _MetricCard(
-                      title: 'NETWORK LATENCY',
+                      title: l10n.metricLatency,
                       value: isConnected
                           ? '${metrics.latencyMs.toStringAsFixed(0)} ms'
                           : '-- ms',
                       statusColor: isConnected && metrics.latencyMs < 25
                           ? AppleTheme.systemGreen
                           : AppleTheme.systemOrange,
-                      subtitle: isConnected ? 'Local LAN Ultra-Low' : 'Standby',
+                      subtitle: isConnected ? l10n.metricLatencyLow : l10n.metricLatencyStandby,
                       icon: CupertinoIcons.stopwatch,
                     ),
                   ),
@@ -74,27 +81,28 @@ class DiagnosticsView extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _MetricCard(
-                      title: 'BANDWIDTH CONSUMPTION',
+                      title: l10n.metricBandwidth,
                       value: isConnected
                           ? '${metrics.bitrateMbps.toStringAsFixed(1)} Mbps'
                           : '-- Mbps',
                       statusColor: AppleTheme.systemBlue,
-                      subtitle:
-                          'Allocated: ${webrtcManager.qualityConfig.effectiveBitrateKbps ~/ 1000} Mbps',
+                      subtitle: l10n.metricBandwidthAllocated(
+                        webrtcManager.qualityConfig.effectiveBitrateKbps ~/ 1000,
+                      ),
                       icon: CupertinoIcons.arrow_up_down,
                     ),
                   ),
                   const SizedBox(width: AppleTheme.spacing16),
                   Expanded(
                     child: _MetricCard(
-                      title: 'PACKET LOSS',
+                      title: l10n.metricPacketLoss,
                       value: isConnected ? '${metrics.packetLossCount}' : '0',
                       statusColor: metrics.packetLossCount == 0
                           ? AppleTheme.systemGreen
                           : AppleTheme.systemRed,
                       subtitle: metrics.packetLossCount == 0
-                          ? 'Zero Dropped Packets'
-                          : 'Congestion Detected',
+                          ? l10n.metricPacketLossNone
+                          : l10n.metricPacketLossDetected,
                       icon: CupertinoIcons.layers,
                     ),
                   ),
@@ -104,7 +112,10 @@ class DiagnosticsView extends StatelessWidget {
               const SizedBox(height: AppleTheme.spacing24),
 
               // Pipeline Details
-              Text('STREAMING PIPELINE', style: AppleTheme.caption.copyWith(color: AppleTheme.resolvedTertiaryLabel(context))),
+              Text(
+                l10n.sectionStreamingPipeline,
+                style: AppleTheme.caption.copyWith(color: AppleTheme.resolvedTertiaryLabel(context)),
+              ),
               const SizedBox(height: AppleTheme.spacing8),
               Container(
                 padding: const EdgeInsets.all(AppleTheme.spacing16),
@@ -124,30 +135,32 @@ class DiagnosticsView extends StatelessWidget {
                 child: Column(
                   children: [
                     _InfoRow(
-                      label: 'Screen Capture Pipeline',
-                      value: 'Apple ScreenCaptureKit (macOS 12.3+)',
+                      label: l10n.capturePipelineLabel,
+                      value: Platform.isMacOS
+                          ? l10n.capturePipelineMac
+                          : l10n.capturePipelineWin,
                     ),
                     const _Divider(),
                     _InfoRow(
-                      label: 'Video Codec',
+                      label: l10n.videoCodecLabel,
                       value: metrics.codec,
                     ),
                     const _Divider(),
                     _InfoRow(
-                      label: 'Hardware Acceleration',
+                      label: l10n.hardwareAccelerationLabel,
                       value: webrtcManager.qualityConfig.enableHardwareAcceleration
-                          ? 'Enabled (Apple VideoToolbox / NVENC)'
-                          : 'Disabled',
+                          ? l10n.hardwareAccelerationDetails
+                          : l10n.disabled,
                     ),
                     const _Divider(),
                     _InfoRow(
-                      label: 'Signaling Protocol',
-                      value: 'WebSocket JSON-RPC (Port 8989)',
+                      label: l10n.signalingProtocolLabel,
+                      value: l10n.signalingProtocolDetails(8989),
                     ),
                     const _Divider(),
                     _InfoRow(
-                      label: 'Local Network Discovery',
-                      value: 'mDNS (Bonjour) + UDP Multicast Fallback',
+                      label: l10n.discoveryProtocolLabel,
+                      value: l10n.discoveryProtocolDetails,
                     ),
                   ],
                 ),

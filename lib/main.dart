@@ -13,6 +13,7 @@ import 'features/sender/controller/sender_controller.dart';
 import 'features/sender/view/sender_view.dart';
 import 'features/settings/controller/settings_controller.dart';
 import 'features/settings/view/settings_view.dart';
+import 'l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +48,7 @@ void main() async {
   final senderController = SenderController(
     discoveryService: discoveryService,
     webrtcManager: senderWebRTCManager,
+    settingsController: settingsController,
   );
   final receiverController = ReceiverController(
     discoveryService: discoveryService,
@@ -100,36 +102,52 @@ class NativeDisplayApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoApp(
-      title: 'Native Display',
-      debugShowCheckedModeBanner: false,
-      theme: CupertinoThemeData(
-        primaryColor: AppleTheme.systemBlue,
-        scaffoldBackgroundColor: AppleTheme.systemBackground,
-        barBackgroundColor: CupertinoColors.transparent,
-        textTheme: CupertinoTextThemeData(
-          textStyle: AppleTheme.body.copyWith(color: CupertinoColors.label),
-        ),
-      ),
-      home: MainShellView(
-        discoveryService: discoveryService,
-        senderController: senderController,
-        receiverController: receiverController,
-        settingsController: settingsController,
-      ),
+    return ListenableBuilder(
+      listenable: settingsController,
+      builder: (context, _) {
+        return CupertinoApp(
+          title: 'Native Display',
+          debugShowCheckedModeBanner: false,
+          locale: settingsController.locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: CupertinoThemeData(
+            primaryColor: AppleTheme.systemBlue,
+            scaffoldBackgroundColor: AppleTheme.systemBackground,
+            barBackgroundColor: CupertinoColors.transparent,
+            textTheme: CupertinoTextThemeData(
+              textStyle: AppleTheme.body.copyWith(color: CupertinoColors.label),
+            ),
+          ),
+          home: MainShellView(
+            discoveryService: discoveryService,
+            senderController: senderController,
+            receiverController: receiverController,
+            settingsController: settingsController,
+          ),
+        );
+      },
     );
   }
 }
 
 enum NavigationItem {
-  sender('Extend Display', CupertinoIcons.macwindow),
-  receiver('Use as Display', CupertinoIcons.device_desktop),
-  diagnostics('Diagnostics', CupertinoIcons.speedometer),
-  settings('Settings', CupertinoIcons.gear_alt);
+  sender(CupertinoIcons.macwindow),
+  receiver(CupertinoIcons.device_desktop),
+  diagnostics(CupertinoIcons.speedometer),
+  settings(CupertinoIcons.gear_alt);
 
-  final String title;
   final IconData icon;
-  const NavigationItem(this.title, this.icon);
+  const NavigationItem(this.icon);
+
+  String getTitle(AppLocalizations l10n) {
+    return switch (this) {
+      NavigationItem.sender => l10n.navExtendDisplay,
+      NavigationItem.receiver => l10n.navReceiveDisplay,
+      NavigationItem.diagnostics => l10n.navDiagnostics,
+      NavigationItem.settings => l10n.navSettings,
+    };
+  }
 }
 
 class MainShellView extends StatefulWidget {
@@ -188,6 +206,8 @@ class _MainShellViewState extends State<MainShellView> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCompact = constraints.maxWidth < 640;
@@ -201,7 +221,7 @@ class _MainShellViewState extends State<MainShellView> {
               items: NavigationItem.values
                   .map((item) => BottomNavigationBarItem(
                         icon: Icon(item.icon),
-                        label: item.title,
+                        label: item.getTitle(l10n),
                       ))
                   .toList(),
             ),
@@ -237,7 +257,7 @@ class _MainShellViewState extends State<MainShellView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSidebarHeader(context),
+                      _buildSidebarHeader(context, l10n),
                       const SizedBox(height: AppleTheme.spacing12),
                       Expanded(
                         child: ListView(
@@ -245,11 +265,11 @@ class _MainShellViewState extends State<MainShellView> {
                             horizontal: AppleTheme.spacing12,
                           ),
                           children: NavigationItem.values
-                              .map((item) => _buildSidebarItem(context, item))
+                              .map((item) => _buildSidebarItem(context, item, l10n))
                               .toList(),
                         ),
                       ),
-                      _buildSidebarFooter(context),
+                      _buildSidebarFooter(context, l10n),
                     ],
                   ),
                 ),
@@ -274,7 +294,7 @@ class _MainShellViewState extends State<MainShellView> {
     );
   }
 
-  Widget _buildSidebarHeader(BuildContext context) {
+  Widget _buildSidebarHeader(BuildContext context, AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.only(
         left: AppleTheme.spacing16,
@@ -284,8 +304,8 @@ class _MainShellViewState extends State<MainShellView> {
       child: Row(
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
@@ -297,36 +317,33 @@ class _MainShellViewState extends State<MainShellView> {
             child: const Icon(
               CupertinoIcons.macwindow,
               color: CupertinoColors.white,
-              size: 18,
+              size: 16,
             ),
           ),
           const SizedBox(width: AppleTheme.spacing12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Native Display',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.2,
-                  color: AppleTheme.resolvedLabel(context),
-                ),
+          Expanded(
+            child: Text(
+              l10n.appName,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+                color: AppleTheme.resolvedLabel(context),
               ),
-              Text(
-                'Mac to Windows Link',
-                style: AppleTheme.footnote.copyWith(
-                  color: AppleTheme.resolvedTertiaryLabel(context),
-                ),
-              ),
-            ],
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSidebarItem(BuildContext context, NavigationItem item) {
+  Widget _buildSidebarItem(
+    BuildContext context,
+    NavigationItem item,
+    AppLocalizations l10n,
+  ) {
     final isSelected = _selectedNav == item;
 
     return Padding(
@@ -360,17 +377,21 @@ class _MainShellViewState extends State<MainShellView> {
                       ),
               ),
               const SizedBox(width: AppleTheme.spacing12),
-              Text(
-                item.title,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected
-                      ? AppleTheme.systemBlue
-                      : CupertinoDynamicColor.resolve(
-                          AppleTheme.label,
-                          context,
-                        ),
+              Expanded(
+                child: Text(
+                  item.getTitle(l10n),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: isSelected
+                        ? AppleTheme.systemBlue
+                        : CupertinoDynamicColor.resolve(
+                            AppleTheme.label,
+                            context,
+                          ),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -380,7 +401,7 @@ class _MainShellViewState extends State<MainShellView> {
     );
   }
 
-  Widget _buildSidebarFooter(BuildContext context) {
+  Widget _buildSidebarFooter(BuildContext context, AppLocalizations l10n) {
     final isConnected =
         widget.senderController.webrtcManager.status == ConnectionStateStatus.connected ||
         widget.receiverController.webrtcManager.status == ConnectionStateStatus.connected;
@@ -388,7 +409,10 @@ class _MainShellViewState extends State<MainShellView> {
     return Padding(
       padding: const EdgeInsets.all(AppleTheme.spacing16),
       child: Container(
-        padding: const EdgeInsets.all(AppleTheme.spacing12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppleTheme.spacing12,
+          vertical: AppleTheme.spacing8,
+        ),
         decoration: BoxDecoration(
           color: CupertinoDynamicColor.resolve(
             AppleTheme.tertiarySystemFill,
@@ -402,16 +426,23 @@ class _MainShellViewState extends State<MainShellView> {
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: isConnected
-                    ? AppleTheme.systemGreen
-                    : AppleTheme.systemOrange,
+                color: AppleTheme.systemGreen,
                 shape: BoxShape.circle,
+                boxShadow: isConnected
+                    ? [
+                        BoxShadow(
+                          color: AppleTheme.systemGreen.withValues(alpha: 0.5),
+                          blurRadius: 4,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : null,
               ),
             ),
             const SizedBox(width: AppleTheme.spacing8),
             Expanded(
               child: Text(
-                isConnected ? 'Display Active' : 'System Ready',
+                isConnected ? l10n.displayActive : l10n.systemReady,
                 style: AppleTheme.footnote.copyWith(
                   fontWeight: FontWeight.w600,
                   color: AppleTheme.resolvedSecondaryLabel(context),
@@ -426,7 +457,10 @@ class _MainShellViewState extends State<MainShellView> {
 
   Widget _buildContent(NavigationItem navItem) {
     return switch (navItem) {
-      NavigationItem.sender => SenderView(controller: widget.senderController),
+      NavigationItem.sender => SenderView(
+          controller: widget.senderController,
+          onOpenSettings: () => _onSelectNav(NavigationItem.settings),
+        ),
       NavigationItem.receiver =>
         ReceiverView(controller: widget.receiverController),
       NavigationItem.diagnostics => DiagnosticsView(

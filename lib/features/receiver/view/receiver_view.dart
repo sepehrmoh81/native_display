@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../../../core/theme/apple_theme.dart';
 import '../../../core/theme/liquid_glass.dart';
+import '../../../l10n/app_localizations.dart';
 import '../controller/receiver_controller.dart';
 
 class ReceiverView extends StatefulWidget {
@@ -18,6 +19,8 @@ class _ReceiverViewState extends State<ReceiverView> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return ListenableBuilder(
       listenable: widget.controller,
       builder: (context, _) {
@@ -25,15 +28,15 @@ class _ReceiverViewState extends State<ReceiverView> {
             widget.controller.status == ReceiverStatus.connected;
 
         if (isConnected) {
-          return _buildActiveStreamingView(context);
+          return _buildActiveStreamingView(context, l10n);
         } else {
-          return _buildStandbyView(context);
+          return _buildStandbyView(context, l10n);
         }
       },
     );
   }
 
-  Widget _buildStandbyView(BuildContext context) {
+  Widget _buildStandbyView(BuildContext context, AppLocalizations l10n) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppleTheme.spacing24),
       child: Column(
@@ -41,23 +44,30 @@ class _ReceiverViewState extends State<ReceiverView> {
         children: [
           Row(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Receiver Mode', style: AppleTheme.title1.copyWith(color: AppleTheme.resolvedLabel(context))),
-                  const SizedBox(height: AppleTheme.spacing4),
-                  Text(
-                    'Use this Windows machine as a high-performance secondary display.',
-                    style: AppleTheme.callout.copyWith(
-                      color: CupertinoDynamicColor.resolve(
-                        AppleTheme.secondaryLabel,
-                        context,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.receiverTitle,
+                      style: AppleTheme.title1.copyWith(
+                        color: AppleTheme.resolvedLabel(context),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: AppleTheme.spacing4),
+                    Text(
+                      l10n.receiverSubtitle,
+                      style: AppleTheme.callout.copyWith(
+                        color: CupertinoDynamicColor.resolve(
+                          AppleTheme.secondaryLabel,
+                          context,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: AppleTheme.spacing16),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppleTheme.spacing12,
@@ -71,18 +81,18 @@ class _ReceiverViewState extends State<ReceiverView> {
                     width: 1,
                   ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
+                    const Icon(
                       CupertinoIcons.antenna_radiowaves_left_right,
                       size: 14,
                       color: AppleTheme.systemGreen,
                     ),
-                    SizedBox(width: AppleTheme.spacing8),
+                    const SizedBox(width: AppleTheme.spacing8),
                     Text(
-                      'Listening for Mac',
-                      style: TextStyle(
+                      l10n.statusListening,
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: AppleTheme.systemGreen,
@@ -135,7 +145,7 @@ class _ReceiverViewState extends State<ReceiverView> {
                 ),
                 const SizedBox(height: AppleTheme.spacing4),
                 Text(
-                  'Signaling Port: ${widget.controller.signalingServer.port} • mDNS Active',
+                  l10n.receiverConnectionInfo(widget.controller.signalingServer.port),
                   style: AppleTheme.footnote.copyWith(color: AppleTheme.resolvedTertiaryLabel(context)),
                 ),
                 const SizedBox(height: AppleTheme.spacing24),
@@ -153,7 +163,7 @@ class _ReceiverViewState extends State<ReceiverView> {
                       ),
                       borderRadius:
                           BorderRadius.circular(AppleTheme.radiusMedium),
-                      onPressed: () => _showRenameDialog(context),
+                      onPressed: () => _showRenameDialog(context, l10n),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -164,7 +174,7 @@ class _ReceiverViewState extends State<ReceiverView> {
                           ),
                           const SizedBox(width: AppleTheme.spacing8),
                           Text(
-                            'Rename Receiver',
+                            l10n.renameDevice,
                             style: TextStyle(
                               color: AppleTheme.resolvedLabel(context),
                               fontSize: 13,
@@ -195,8 +205,8 @@ class _ReceiverViewState extends State<ReceiverView> {
                           const SizedBox(width: AppleTheme.spacing8),
                           Text(
                             widget.controller.isFullscreen
-                                ? 'Exit Fullscreen'
-                                : 'Enter Fullscreen',
+                                ? l10n.exitFullscreen
+                                : l10n.enterFullscreen,
                             style: const TextStyle(fontSize: 13),
                           ),
                         ],
@@ -211,7 +221,7 @@ class _ReceiverViewState extends State<ReceiverView> {
           const SizedBox(height: AppleTheme.spacing24),
 
           // Instruction Cards
-          Text('HOW TO CONNECT', style: AppleTheme.caption.copyWith(color: AppleTheme.resolvedTertiaryLabel(context))),
+          Text(l10n.sectionHowToConnect, style: AppleTheme.caption.copyWith(color: AppleTheme.resolvedTertiaryLabel(context))),
           const SizedBox(height: AppleTheme.spacing8),
           Container(
             padding: const EdgeInsets.all(AppleTheme.spacing20),
@@ -228,22 +238,21 @@ class _ReceiverViewState extends State<ReceiverView> {
                 ),
               ),
             ),
-            child: const Column(
+            child: Column(
               children: [
                 _StepRow(
                   number: '1',
-                  text: 'Open Native Display on your Mac.',
+                  text: l10n.step1Title,
                 ),
-                SizedBox(height: AppleTheme.spacing12),
+                const SizedBox(height: AppleTheme.spacing12),
                 _StepRow(
                   number: '2',
-                  text: 'Select this Windows machine under "Available Displays".',
+                  text: l10n.step2Title(widget.controller.deviceName),
                 ),
-                SizedBox(height: AppleTheme.spacing12),
+                const SizedBox(height: AppleTheme.spacing12),
                 _StepRow(
                   number: '3',
-                  text:
-                      'Click "Stream to Windows". Video will appear automatically with low-latency WebRTC.',
+                  text: l10n.step3Title,
                 ),
               ],
             ),
@@ -253,7 +262,7 @@ class _ReceiverViewState extends State<ReceiverView> {
     );
   }
 
-  Widget _buildActiveStreamingView(BuildContext context) {
+  Widget _buildActiveStreamingView(BuildContext context, AppLocalizations l10n) {
     return MouseRegion(
       onHover: (_) {
         if (!_showOverlay) setState(() => _showOverlay = true);
@@ -295,9 +304,9 @@ class _ReceiverViewState extends State<ReceiverView> {
                       ),
                     ),
                     const SizedBox(width: AppleTheme.spacing8),
-                    const Text(
-                      'Connected • Display Stream Active',
-                      style: TextStyle(
+                    Text(
+                      l10n.receiverConnectedBadge,
+                      style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: CupertinoColors.white,
@@ -323,8 +332,8 @@ class _ReceiverViewState extends State<ReceiverView> {
                           const SizedBox(width: 6),
                           Text(
                             widget.controller.isFullscreen
-                                ? 'Window'
-                                : 'Fullscreen',
+                                ? l10n.windowedMode
+                                : l10n.fullscreenMode,
                             style: const TextStyle(
                               fontSize: 12,
                               color: CupertinoColors.white,
@@ -340,18 +349,18 @@ class _ReceiverViewState extends State<ReceiverView> {
                       borderRadius:
                           BorderRadius.circular(AppleTheme.radiusSmall),
                       onPressed: widget.controller.disconnectSender,
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          const Icon(
                             CupertinoIcons.xmark,
                             size: 14,
                             color: CupertinoColors.white,
                           ),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           Text(
-                            'Disconnect',
-                            style: TextStyle(
+                            l10n.disconnect,
+                            style: const TextStyle(
                               fontSize: 12,
                               color: CupertinoColors.white,
                               fontWeight: FontWeight.w600,
@@ -379,29 +388,29 @@ class _ReceiverViewState extends State<ReceiverView> {
     );
   }
 
-  void _showRenameDialog(BuildContext context) {
+  void _showRenameDialog(BuildContext context, AppLocalizations l10n) {
     final textController =
         TextEditingController(text: widget.controller.deviceName);
     showCupertinoDialog(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
-        title: const Text('Rename Display Receiver'),
+        title: Text(l10n.renameDeviceTitle),
         content: Padding(
           padding: const EdgeInsets.only(top: 12),
           child: CupertinoTextField(
             controller: textController,
             autofocus: true,
-            placeholder: 'Device Name',
+            placeholder: l10n.deviceNamePlaceholder,
           ),
         ),
         actions: [
           CupertinoDialogAction(
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
             onPressed: () => Navigator.pop(ctx),
           ),
           CupertinoDialogAction(
             isDefaultAction: true,
-            child: const Text('Save'),
+            child: Text(l10n.save),
             onPressed: () {
               if (textController.text.trim().isNotEmpty) {
                 widget.controller.setDeviceName(textController.text.trim());
