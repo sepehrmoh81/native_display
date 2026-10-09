@@ -21,7 +21,7 @@
 
 > [!NOTE]
 > ### 🤖 AI Generation Notice
-> The whole project is AI-generated and isn't prone to issues. Every module—from macOS CoreGraphics private API bindings and Shelf WebSocket signaling to WebRTC peer-to-peer pipelines and Cupertino Liquid Glass UI—was crafted with automated AI assistance.
+> The whole project is AI-generated and may be prone to issues. Every module—from macOS CoreGraphics private API bindings and Shelf WebSocket signaling to WebRTC peer-to-peer pipelines and Cupertino Liquid Glass UI—was crafted with automated AI assistance.
 
 ---
 
