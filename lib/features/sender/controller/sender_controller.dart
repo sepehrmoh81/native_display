@@ -142,7 +142,14 @@ class SenderController extends ChangeNotifier {
 
   void _onDiscoveryUpdate() {
     final receivers = availableReceivers;
-    if (_selectedReceiver == null && receivers.isNotEmpty) {
+    if (_selectedReceiver != null) {
+      final updated = receivers.where((r) => r.id == _selectedReceiver!.id).firstOrNull;
+      if (updated != null) {
+        _selectedReceiver = updated;
+      } else if (receivers.isNotEmpty) {
+        _selectedReceiver = receivers.first;
+      }
+    } else if (receivers.isNotEmpty) {
       _selectedReceiver = receivers.first;
     }
     TrayController.instance.updateMenu(
@@ -268,7 +275,12 @@ class SenderController extends ChangeNotifier {
         targetCaptureSource = webrtcManager.selectedSource;
       }
 
-      // 4. Connect signaling client to target receiver
+      // 4. Connect signaling client to target receiver (refresh with latest discovered IP)
+      final freshReceiver = availableReceivers.where((r) => r.id == _selectedReceiver!.id).firstOrNull;
+      if (freshReceiver != null) {
+        _selectedReceiver = freshReceiver;
+      }
+      debugPrint('[SenderController] Target receiver: ${_selectedReceiver?.name} at ${_selectedReceiver?.endpoint}');
       await signalingClient.connect(_selectedReceiver!.endpoint);
 
       // 5. Start WebRTC sender session with the target source

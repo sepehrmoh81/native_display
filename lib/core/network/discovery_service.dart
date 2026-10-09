@@ -272,7 +272,7 @@ class DiscoveryService extends ChangeNotifier {
         includeLinkLocal: false,
       );
 
-      // Prioritize physical Wi-Fi and Ethernet adapters over virtual adapters (WSL, Hyper-V, Docker)
+      // Prioritize physical Wi-Fi and Ethernet adapters over virtual adapters (WSL, Hyper-V, Docker, Hotspot)
       final sorted = List<NetworkInterface>.from(interfaces)..sort((a, b) {
         final aName = a.name.toLowerCase();
         final bName = b.name.toLowerCase();
@@ -282,19 +282,39 @@ class DiscoveryService extends ChangeNotifier {
             aName.contains('docker') ||
             aName.contains('utun') ||
             aName.contains('vmware') ||
-            aName.contains('hyper-v');
+            aName.contains('hyper-v') ||
+            aName.contains('loopback') ||
+            aName.contains('direct') ||
+            aName.contains('hotspot');
         final bIsVirtual = bName.contains('vethernet') ||
             bName.contains('wsl') ||
             bName.contains('virtual') ||
             bName.contains('docker') ||
             bName.contains('utun') ||
             bName.contains('vmware') ||
-            bName.contains('hyper-v');
+            bName.contains('hyper-v') ||
+            bName.contains('loopback') ||
+            bName.contains('direct') ||
+            bName.contains('hotspot');
         if (aIsVirtual && !bIsVirtual) return 1;
         if (!aIsVirtual && bIsVirtual) return -1;
         return 0;
       });
 
+      // Pass 1: find physical routable LAN address, ignoring Windows hotspot/ICS (192.168.137.x) and APIPA (169.254.x.x)
+      for (final iface in sorted) {
+        for (final addr in iface.addresses) {
+          if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
+            final ip = addr.address;
+            if (ip.startsWith('169.254.') || ip.startsWith('192.168.137.')) {
+              continue;
+            }
+            return ip;
+          }
+        }
+      }
+
+      // Pass 2: fallback if no other non-hotspot interface is available
       for (final iface in sorted) {
         for (final addr in iface.addresses) {
           if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
