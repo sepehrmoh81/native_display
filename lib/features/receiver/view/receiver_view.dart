@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../../../core/theme/apple_theme.dart';
 import '../../../core/theme/liquid_glass.dart';
@@ -263,16 +264,27 @@ class _ReceiverViewState extends State<ReceiverView> {
   }
 
   Widget _buildActiveStreamingView(BuildContext context, AppLocalizations l10n) {
-    return MouseRegion(
-      onHover: (_) {
-        if (!_showOverlay) setState(() => _showOverlay = true);
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.escape &&
+            widget.controller.isFullscreen) {
+          widget.controller.setFullscreen(false);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
       },
-      child: Stack(
-        children: [
-          // The Remote WebRTC Video View
-          Positioned.fill(
-            child: Container(
-              color: CupertinoColors.black,
+      child: MouseRegion(
+        onHover: (_) {
+          if (!_showOverlay) setState(() => _showOverlay = true);
+        },
+        child: Stack(
+          children: [
+            // The Remote WebRTC Video View
+            Positioned.fill(
+              child: Container(
+                color: CupertinoColors.black,
               child: RTCVideoView(
                 widget.controller.webrtcManager.remoteRenderer,
                 objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
@@ -385,8 +397,9 @@ class _ReceiverViewState extends State<ReceiverView> {
             ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   void _showRenameDialog(BuildContext context, AppLocalizations l10n) {
     final textController =

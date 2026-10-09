@@ -35,7 +35,8 @@ class SenderController extends ChangeNotifier {
   SenderStatus _status = SenderStatus.idle;
   SenderStatus get status => _status;
 
-  SenderStreamMode _streamMode = SenderStreamMode.extend;
+  SenderStreamMode _streamMode =
+      Platform.isMacOS ? SenderStreamMode.extend : SenderStreamMode.mirror;
   SenderStreamMode get streamMode => _streamMode;
 
   String? _errorMessage;
@@ -188,6 +189,9 @@ class SenderController extends ChangeNotifier {
   }
 
   void setStreamMode(SenderStreamMode mode) {
+    if (mode == SenderStreamMode.extend && !Platform.isMacOS) {
+      return; // Extend mode is only supported on macOS for now
+    }
     _streamMode = mode;
     notifyListeners();
   }

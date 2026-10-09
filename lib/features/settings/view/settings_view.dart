@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/apple_theme.dart';
@@ -97,9 +98,10 @@ class _SettingsViewState extends State<SettingsView> {
 
               const SizedBox(height: AppleTheme.spacing12),
 
-              // 2. Virtual Display Configuration Section
-              _buildSection(
-                headerText: l10n.sectionVirtualConfig,
+              // 2. Virtual Display Configuration Section (macOS only)
+              if (Platform.isMacOS) ...[
+                _buildSection(
+                  headerText: l10n.sectionVirtualConfig,
                 footerText: controller.virtualHiDPI
                     ? l10n.hidpiEnabled
                     : l10n.hidpiDisabled,
@@ -146,8 +148,8 @@ class _SettingsViewState extends State<SettingsView> {
                   ),
                 ],
               ),
-
               const SizedBox(height: AppleTheme.spacing12),
+            ],
 
               // 3. Video Streaming Quality Preset & Bitrate
               _buildSection(

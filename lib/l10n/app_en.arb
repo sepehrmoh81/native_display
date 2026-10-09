@@ -167,6 +167,10 @@
   "@selectLanguageTitle": {
     "description": "Title of language selection sheet"
   },
+  "extendMacOnlyNotice": "Virtual display extension is currently supported on macOS only. Mirror mode is active on this system.",
+  "@extendMacOnlyNotice": {
+    "description": "Notice when virtual display extension is disabled on non-macOS"
+  },
   "sectionSourceDisplay": "SELECT DISPLAY OR WINDOW",
   "@sectionSourceDisplay": {
     "description": "Header for mirror source selection"

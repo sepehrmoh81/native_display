@@ -136,6 +136,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get selectLanguageTitle => 'Select Language';
 
   @override
+  String get extendMacOnlyNotice =>
+      'Virtual display extension is currently supported on macOS only. Mirror mode is active on this system.';
+
+  @override
   String get sectionSourceDisplay => 'SELECT DISPLAY OR WINDOW';
 
   @override

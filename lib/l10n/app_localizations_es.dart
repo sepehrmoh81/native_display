@@ -137,6 +137,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get selectLanguageTitle => 'Seleccionar idioma';
 
   @override
+  String get extendMacOnlyNotice =>
+      'La extensión de pantalla virtual actualmente solo es compatible con macOS. El modo de duplicación está activo en este sistema.';
+
+  @override
   String get sectionSourceDisplay => 'SELECCIONAR PANTALLA O VENTANA';
 
   @override

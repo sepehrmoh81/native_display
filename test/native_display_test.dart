@@ -186,6 +186,10 @@ void main() {
       expect(en.matchReceiverResolution(1920, 1080), 'Match Receiver (1920×1080)');
       expect(es.matchReceiverResolution(1920, 1080), 'Coincidir con receptor (1920×1080)');
       expect(de.matchReceiverResolution(1920, 1080), 'Empfänger anpassen (1920×1080)');
+
+      expect(en.extendMacOnlyNotice, contains('macOS only'));
+      expect(es.extendMacOnlyNotice, contains('macOS'));
+      expect(de.extendMacOnlyNotice, contains('macOS'));
     });
   });
 

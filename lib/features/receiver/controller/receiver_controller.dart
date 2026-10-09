@@ -17,7 +17,7 @@ enum ReceiverStatus {
   error,
 }
 
-class ReceiverController extends ChangeNotifier {
+class ReceiverController extends ChangeNotifier with WindowListener {
   final DiscoveryService discoveryService;
   final WebRTCManager webrtcManager;
   final SignalingServer signalingServer =
@@ -45,6 +45,9 @@ class ReceiverController extends ChangeNotifier {
   }
 
   Future<void> _init() async {
+    if (Platform.isMacOS || Platform.isWindows) {
+      windowManager.addListener(this);
+    }
     _deviceName = Platform.localHostname.isNotEmpty
         ? Platform.localHostname
         : 'Windows Secondary Display';
@@ -157,14 +160,37 @@ class ReceiverController extends ChangeNotifier {
     }
   }
 
-  Future<void> toggleFullscreen() async {
+  @override
+  void onWindowEnterFullScreen() {
+    if (!_isFullscreen) {
+      _isFullscreen = true;
+      notifyListeners();
+    }
+  }
+
+  @override
+  void onWindowLeaveFullScreen() {
+    if (_isFullscreen) {
+      _isFullscreen = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> setFullscreen(bool value) async {
+    if (_isFullscreen == value) return;
     try {
-      _isFullscreen = !_isFullscreen;
-      await windowManager.setFullScreen(_isFullscreen);
+      _isFullscreen = value;
+      if (Platform.isMacOS || Platform.isWindows) {
+        await windowManager.setFullScreen(value);
+      }
       notifyListeners();
     } catch (e) {
-      debugPrint('[ReceiverController] Fullscreen error: $e');
+      debugPrint('[ReceiverController] setFullscreen error: $e');
     }
+  }
+
+  Future<void> toggleFullscreen() async {
+    await setFullscreen(!_isFullscreen);
   }
 
   Future<void> disconnectSender() async {
@@ -182,6 +208,9 @@ class ReceiverController extends ChangeNotifier {
 
   @override
   void dispose() {
+    if (Platform.isMacOS || Platform.isWindows) {
+      windowManager.removeListener(this);
+    }
     signalingServer.stop();
     discoveryService.stopBroadcasting();
     super.dispose();

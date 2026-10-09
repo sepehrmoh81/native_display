@@ -137,6 +137,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get selectLanguageTitle => 'Sprache auswählen';
 
   @override
+  String get extendMacOnlyNotice =>
+      'Virtuelle Display-Erweiterung wird derzeit nur unter macOS unterstützt. Spiegelungsmodus ist auf diesem System aktiv.';
+
+  @override
   String get sectionSourceDisplay => 'DISPLAY ODER FENSTER AUSWÄHLEN';
 
   @override

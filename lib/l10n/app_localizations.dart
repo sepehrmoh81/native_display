@@ -340,6 +340,12 @@ abstract class AppLocalizations {
   /// **'Select Language'**
   String get selectLanguageTitle;
 
+  /// Notice when virtual display extension is disabled on non-macOS
+  ///
+  /// In en, this message translates to:
+  /// **'Virtual display extension is currently supported on macOS only. Mirror mode is active on this system.'**
+  String get extendMacOnlyNotice;
+
   /// Header for mirror source selection
   ///
   /// In en, this message translates to:

@@ -1,8 +1,6 @@
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../../../core/theme/apple_theme.dart';
-import '../../../core/theme/liquid_glass.dart';
 import '../../../l10n/app_localizations.dart';
 import '../controller/sender_controller.dart';
 import 'display_selector.dart';
@@ -72,7 +70,7 @@ class SenderView extends StatelessWidget {
 
               const SizedBox(height: AppleTheme.spacing20),
 
-              // Mode Switcher (Extend vs Mirror)
+              // Mode Switcher (Extend vs Mirror, with Extend disabled on non-macOS)
               _buildModeSwitcher(context, l10n),
 
               const SizedBox(height: AppleTheme.spacing20),
@@ -105,10 +103,10 @@ class SenderView extends StatelessWidget {
                 _buildSettingsHint(context, l10n),
               ],
 
-              // Live stream preview when active
+              // Active streaming status card (preview eliminated from sender screen)
               if (isStreaming) ...[
                 const SizedBox(height: AppleTheme.spacing24),
-                _buildLivePreview(context, l10n),
+                _buildActiveStreamCard(context, l10n),
               ],
             ],
           ),
@@ -118,69 +116,98 @@ class SenderView extends StatelessWidget {
   }
 
   Widget _buildModeSwitcher(BuildContext context, AppLocalizations l10n) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: CupertinoDynamicColor.resolve(
-          AppleTheme.tertiarySystemFill,
-          context,
-        ),
-        borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
-      ),
-      child: CupertinoSlidingSegmentedControl<SenderStreamMode>(
-        groupValue: controller.streamMode,
-        backgroundColor: CupertinoColors.transparent,
-        thumbColor: CupertinoDynamicColor.resolve(
-          AppleTheme.secondarySystemBackground,
-          context,
-        ),
-        children: {
-          SenderStreamMode.extend: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(CupertinoIcons.rectangle_split_3x1, size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  l10n.modeExtend,
-                  style: AppleTheme.callout.copyWith(
-                    fontWeight: controller.streamMode == SenderStreamMode.extend
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                    color: AppleTheme.resolvedLabel(context),
+    final canExtend = Platform.isMacOS;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: CupertinoDynamicColor.resolve(
+              AppleTheme.tertiarySystemFill,
+              context,
+            ),
+            borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
+          ),
+          child: CupertinoSlidingSegmentedControl<SenderStreamMode>(
+            groupValue: controller.streamMode,
+            backgroundColor: CupertinoColors.transparent,
+            thumbColor: CupertinoDynamicColor.resolve(
+              AppleTheme.secondarySystemBackground,
+              context,
+            ),
+            children: {
+              SenderStreamMode.extend: Opacity(
+                opacity: canExtend ? 1.0 : 0.45,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(CupertinoIcons.rectangle_split_3x1, size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        canExtend
+                            ? l10n.modeExtend
+                            : '${l10n.modeExtend} (macOS only)',
+                        style: AppleTheme.callout.copyWith(
+                          fontWeight: controller.streamMode == SenderStreamMode.extend
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                          color: canExtend
+                              ? AppleTheme.resolvedLabel(context)
+                              : AppleTheme.resolvedTertiaryLabel(context),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
-          SenderStreamMode.mirror: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(CupertinoIcons.tv, size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  l10n.modeMirror,
-                  style: AppleTheme.callout.copyWith(
-                    fontWeight: controller.streamMode == SenderStreamMode.mirror
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                    color: AppleTheme.resolvedLabel(context),
-                  ),
+              ),
+              SenderStreamMode.mirror: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(CupertinoIcons.tv, size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.modeMirror,
+                      style: AppleTheme.callout.copyWith(
+                        fontWeight: controller.streamMode == SenderStreamMode.mirror
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        color: AppleTheme.resolvedLabel(context),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
+            },
+            onValueChanged: (mode) {
+              if (mode != null) {
+                if (mode == SenderStreamMode.extend && !canExtend) {
+                  return; // Cannot switch to Extend mode on non-macOS
+                }
+                controller.setStreamMode(mode);
+              }
+            },
+          ),
+        ),
+        if (!canExtend) ...[
+          const SizedBox(height: AppleTheme.spacing8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppleTheme.spacing4),
+            child: Text(
+              l10n.extendMacOnlyNotice,
+              style: AppleTheme.footnote.copyWith(
+                color: AppleTheme.resolvedTertiaryLabel(context),
+              ),
             ),
           ),
-        },
-        onValueChanged: (mode) {
-          if (mode != null) {
-            controller.setStreamMode(mode);
-          }
-        },
-      ),
+        ],
+      ],
     );
   }
 
@@ -527,78 +554,60 @@ class SenderView extends StatelessWidget {
     );
   }
 
-  Widget _buildLivePreview(BuildContext context, AppLocalizations l10n) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          controller.streamMode == SenderStreamMode.extend
-              ? l10n.virtualDisplayPreview
-              : l10n.capturePreview,
-          style: AppleTheme.caption.copyWith(
-            color: AppleTheme.resolvedTertiaryLabel(context),
-          ),
+  Widget _buildActiveStreamCard(BuildContext context, AppLocalizations l10n) {
+    final receiver = controller.selectedReceiver;
+    final isExtend = controller.streamMode == SenderStreamMode.extend;
+
+    return Container(
+      padding: const EdgeInsets.all(AppleTheme.spacing20),
+      decoration: BoxDecoration(
+        color: CupertinoDynamicColor.resolve(
+          AppleTheme.secondarySystemBackground,
+          context,
         ),
-        const SizedBox(height: AppleTheme.spacing8),
-        Container(
-          height: 240,
-          decoration: BoxDecoration(
-            color: CupertinoColors.black,
-            borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
-            border: Border.all(
-              color: CupertinoDynamicColor.resolve(
-                AppleTheme.separator,
-                context,
-              ),
-            ),
+        borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
+        border: Border.all(
+          color: CupertinoDynamicColor.resolve(
+            AppleTheme.separator,
+            context,
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Stack(
+          width: 0.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              RTCVideoView(
-                controller.webrtcManager.localRenderer,
-                objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
+              Container(
+                width: 10,
+                height: 10,
+                decoration: const BoxDecoration(
+                  color: AppleTheme.systemGreen,
+                  shape: BoxShape.circle,
+                ),
               ),
-              Positioned(
-                top: AppleTheme.spacing8,
-                right: AppleTheme.spacing8,
-                child: LiquidGlassSurface(
-                  variant: LiquidGlassVariant.clear,
-                  borderRadius: AppleTheme.radiusPill,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppleTheme.systemGreen,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        controller.streamMode == SenderStreamMode.extend
-                            ? l10n.badgeVirtualActive
-                            : l10n.badgeStreamingActive,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: CupertinoColors.white,
-                        ),
-                      ),
-                    ],
-                  ),
+              const SizedBox(width: AppleTheme.spacing8),
+              Text(
+                isExtend ? l10n.statusVirtualActive : l10n.statusMirrorActive,
+                style: AppleTheme.headline.copyWith(
+                  color: AppleTheme.resolvedLabel(context),
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: AppleTheme.spacing8),
+          Text(
+            isExtend
+                ? 'Desktop extended to ${receiver?.name ?? "secondary display"} with low-latency WebRTC.'
+                : 'Display mirror active to ${receiver?.name ?? "target display"}.',
+            style: AppleTheme.callout.copyWith(
+              color: AppleTheme.resolvedSecondaryLabel(context),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

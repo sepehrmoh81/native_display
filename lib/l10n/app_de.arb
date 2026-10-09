@@ -43,6 +43,7 @@
   "senderSettingsHint": "Auflösung, Bildwiederholrate und Stream-Qualität werden in den Einstellungen verwaltet.",
   "openSettings": "Einstellungen öffnen",
   "selectLanguageTitle": "Sprache auswählen",
+  "extendMacOnlyNotice": "Virtuelle Display-Erweiterung wird derzeit nur unter macOS unterstützt. Spiegelungsmodus ist auf diesem System aktiv.",
   "sectionSourceDisplay": "DISPLAY ODER FENSTER AUSWÄHLEN",
   "noDisplaysFound": "Keine Displays oder Fenster gefunden. Stelle sicher, dass die Berechtigung zur Bildschirmaufnahme erteilt ist.",
   "fullScreenDisplay": "Gesamtes Display",

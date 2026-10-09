@@ -207,6 +207,15 @@ class _MainShellViewState extends State<MainShellView> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isFullscreen = widget.receiverController.isFullscreen;
+
+    if (isFullscreen) {
+      // Fullscreen mode: HIDE sidebar, hide tab bar, fill 100% of the display
+      return CupertinoPageScaffold(
+        backgroundColor: CupertinoColors.black,
+        child: _buildContent(_selectedNav),
+      );
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
