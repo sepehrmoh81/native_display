@@ -125,8 +125,10 @@ class WebRTCManager extends ChangeNotifier {
 
       _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
         if (candidate.candidate == null || candidate.candidate!.trim().isEmpty) {
+          debugPrint('[WebRTCManager] Local candidate gathering complete (null/empty)');
           return;
         }
+        debugPrint('[WebRTCManager] Generated local ICE candidate: ${candidate.candidate}');
         onSignalingMessageReady?.call(SignalingMessage(
           type: SignalingType.candidate,
           data: candidate.toMap(),
@@ -144,13 +146,16 @@ class WebRTCManager extends ChangeNotifier {
 
       // 3. Add video track to PeerConnection
       for (final track in _localStream!.getTracks()) {
+        debugPrint('[WebRTCManager] Adding track ${track.kind}:${track.id} to PeerConnection');
         await _peerConnection!.addTrack(track, _localStream!);
       }
 
       // 4. Create and send Offer (Unified Plan)
+      debugPrint('[WebRTCManager] Creating Offer...');
       final offer = await _peerConnection!.createOffer({});
-
+      debugPrint('[WebRTCManager] Setting local description (Offer)...');
       await _peerConnection!.setLocalDescription(offer);
+      debugPrint('[WebRTCManager] Local description (Offer) set, dispatching Offer');
 
       onSignalingMessageReady?.call(SignalingMessage(
         type: SignalingType.offer,
@@ -179,8 +184,10 @@ class WebRTCManager extends ChangeNotifier {
 
       _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
         if (candidate.candidate == null || candidate.candidate!.trim().isEmpty) {
+          debugPrint('[WebRTCManager] Receiver candidate gathering complete (null/empty)');
           return;
         }
+        debugPrint('[WebRTCManager] Generated local ICE candidate (receiver): ${candidate.candidate}');
         onSignalingMessageReady?.call(SignalingMessage(
           type: SignalingType.candidate,
           data: candidate.toMap(),

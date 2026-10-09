@@ -66,8 +66,12 @@ class ReceiverController extends ChangeNotifier {
 
     // Forward WebRTC local signaling messages (e.g. answer & candidates) to sender client
     webrtcManager.onSignalingMessageReady = (message) {
+      debugPrint('[ReceiverController] WebRTC message ready: ${message.type.name} (has activeClient: ${_activeClient != null})');
       if (_activeClient != null) {
         signalingServer.sendTo(_activeClient!, message);
+      } else {
+        debugPrint('[ReceiverController] Fallback: Broadcasting ${message.type.name} to all connected clients');
+        signalingServer.broadcast(message);
       }
     };
 
