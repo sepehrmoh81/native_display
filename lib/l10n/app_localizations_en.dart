@@ -69,6 +69,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get senderPermissionButton => 'Grant Permission';
 
   @override
+  String get senderMacOnlyTitle => 'macOS Required';
+
+  @override
+  String get senderMacOnlyDescription =>
+      'Display extension is currently exclusive to macOS. On Windows, Native Display functions as a high-performance secondary display receiver.';
+
+  @override
+  String get switchToReceiver => 'Switch to Receive Display';
+
+  @override
   String get modeExtend => 'Extend Display (Virtual)';
 
   @override
@@ -134,10 +144,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get selectLanguageTitle => 'Select Language';
-
-  @override
-  String get extendMacOnlyNotice =>
-      'Virtual display extension is currently supported on macOS only. Mirror mode is active on this system.';
 
   @override
   String get sectionSourceDisplay => 'SELECT DISPLAY OR WINDOW';

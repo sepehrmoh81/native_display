@@ -4,8 +4,14 @@ import 'package:native_display/core/constants/app_constants.dart';
 import 'package:native_display/core/network/models/peer_device.dart';
 import 'package:native_display/core/network/models/signaling_message.dart';
 import 'package:native_display/core/theme/liquid_glass.dart';
+import 'package:native_display/core/network/discovery_service.dart';
+import 'package:native_display/core/webrtc/webrtc_manager.dart';
+import 'package:native_display/features/receiver/controller/receiver_controller.dart';
+import 'package:native_display/features/sender/controller/sender_controller.dart';
+import 'package:native_display/features/sender/view/sender_view.dart';
 import 'package:native_display/features/settings/controller/settings_controller.dart';
 import 'package:native_display/l10n/app_localizations.dart';
+import 'package:native_display/main.dart';
 
 void main() {
   group('SignalingMessage Tests', () {
@@ -187,9 +193,12 @@ void main() {
       expect(es.matchReceiverResolution(1920, 1080), 'Coincidir con receptor (1920×1080)');
       expect(de.matchReceiverResolution(1920, 1080), 'Empfänger anpassen (1920×1080)');
 
-      expect(en.extendMacOnlyNotice, contains('macOS only'));
-      expect(es.extendMacOnlyNotice, contains('macOS'));
-      expect(de.extendMacOnlyNotice, contains('macOS'));
+      expect(en.senderMacOnlyTitle, 'macOS Required');
+      expect(es.senderMacOnlyTitle, 'Se requiere macOS');
+      expect(de.senderMacOnlyTitle, 'macOS erforderlich');
+
+      expect(en.senderMacOnlyDescription, contains('exclusive to macOS'));
+      expect(en.switchToReceiver, 'Switch to Receive Display');
     });
   });
 
@@ -225,6 +234,80 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Ajustes'), findsOneWidget);
       expect(find.text('Extender pantalla'), findsOneWidget);
+    });
+
+    testWidgets('renders disabled macOS-only placeholder when SenderView is opened on non-macOS', (tester) async {
+      bool switched = false;
+      final discovery = DiscoveryService();
+      final webrtc = WebRTCManager();
+      final settings = SettingsController();
+      final senderController = SenderController(
+        discoveryService: discovery,
+        webrtcManager: webrtc,
+        settingsController: settings,
+      );
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: CupertinoPageScaffold(
+            child: SenderView(
+              controller: senderController,
+              isMacOverride: false,
+              onSwitchToReceiver: () => switched = true,
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('macOS Required'), findsOneWidget);
+      expect(find.text('Switch to Receive Display'), findsOneWidget);
+
+      await tester.tap(find.text('Switch to Receive Display'));
+      expect(switched, isTrue);
+    });
+
+    testWidgets('MainShellView dims Extend Display and defaults to Receiver when isMacOverride is false', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final discovery = DiscoveryService();
+      final webrtc = WebRTCManager();
+      final settings = SettingsController();
+      final senderController = SenderController(
+        discoveryService: discovery,
+        webrtcManager: webrtc,
+        settingsController: settings,
+      );
+      final receiverController = ReceiverController(
+        discoveryService: discovery,
+        webrtcManager: webrtc,
+      );
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: MainShellView(
+            discoveryService: discovery,
+            senderController: senderController,
+            receiverController: receiverController,
+            settingsController: settings,
+            isMacOverride: false,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Expect macOS badge tag on dimmed Extend Display item
+      expect(find.text('macOS'), findsOneWidget);
+      // Expect Receive Display title is visible
+      expect(find.text('Receive Display'), findsWidgets);
     });
   });
 }

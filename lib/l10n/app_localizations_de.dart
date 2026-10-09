@@ -70,6 +70,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get senderPermissionButton => 'Zugriff erlauben';
 
   @override
+  String get senderMacOnlyTitle => 'macOS erforderlich';
+
+  @override
+  String get senderMacOnlyDescription =>
+      'Die Display-Erweiterung ist derzeit exklusiv für macOS verfügbar. Unter Windows fungiert Native Display als leistungsstarker sekundärer Display-Empfänger.';
+
+  @override
+  String get switchToReceiver => 'Zu Display empfangen wechseln';
+
+  @override
   String get modeExtend => 'Display erweitern (Virtuell)';
 
   @override
@@ -135,10 +145,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get selectLanguageTitle => 'Sprache auswählen';
-
-  @override
-  String get extendMacOnlyNotice =>
-      'Virtuelle Display-Erweiterung wird derzeit nur unter macOS unterstützt. Spiegelungsmodus ist auf diesem System aktiv.';
 
   @override
   String get sectionSourceDisplay => 'DISPLAY ODER FENSTER AUSWÄHLEN';

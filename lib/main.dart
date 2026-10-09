@@ -155,6 +155,7 @@ class MainShellView extends StatefulWidget {
   final SenderController senderController;
   final ReceiverController receiverController;
   final SettingsController settingsController;
+  final bool? isMacOverride;
 
   const MainShellView({
     super.key,
@@ -162,6 +163,7 @@ class MainShellView extends StatefulWidget {
     required this.senderController,
     required this.receiverController,
     required this.settingsController,
+    this.isMacOverride,
   });
 
   @override
@@ -171,12 +173,13 @@ class MainShellView extends StatefulWidget {
 class _MainShellViewState extends State<MainShellView> {
   late NavigationItem _selectedNav;
 
+  bool get _isMac => widget.isMacOverride ?? Platform.isMacOS;
+
   @override
   void initState() {
     super.initState();
-    // Default to Sender on macOS, Receiver on Windows
-    _selectedNav =
-        Platform.isWindows ? NavigationItem.receiver : NavigationItem.sender;
+    // Default to Sender on macOS, Receiver on Windows/others
+    _selectedNav = _isMac ? NavigationItem.sender : NavigationItem.receiver;
     widget.senderController.addListener(_onStateUpdate);
     widget.receiverController.addListener(_onStateUpdate);
   }
@@ -193,6 +196,7 @@ class _MainShellViewState extends State<MainShellView> {
   }
 
   void _onSelectNav(NavigationItem item) {
+    if (item == NavigationItem.sender && !_isMac) return;
     if (_selectedNav == item) return;
     setState(() => _selectedNav = item);
     if (!Platform.isWindows) {
@@ -223,11 +227,16 @@ class _MainShellViewState extends State<MainShellView> {
 
         if (isCompact) {
           // Compact / Mobile Layout: Cupertino Tab Bar
+          final navItems = NavigationItem.values
+              .where((item) => item != NavigationItem.sender || Platform.isMacOS)
+              .toList();
+          final currentIndex = navItems.indexOf(_selectedNav);
+
           return CupertinoTabScaffold(
             tabBar: CupertinoTabBar(
-              currentIndex: NavigationItem.values.indexOf(_selectedNav),
-              onTap: (index) => _onSelectNav(NavigationItem.values[index]),
-              items: NavigationItem.values
+              currentIndex: currentIndex >= 0 ? currentIndex : 0,
+              onTap: (index) => _onSelectNav(navItems[index]),
+              items: navItems
                   .map((item) => BottomNavigationBarItem(
                         icon: Icon(item.icon),
                         label: item.getTitle(l10n),
@@ -237,7 +246,7 @@ class _MainShellViewState extends State<MainShellView> {
             tabBuilder: (context, index) {
               return CupertinoPageScaffold(
                 child: SafeArea(
-                  child: _buildContent(NavigationItem.values[index]),
+                  child: _buildContent(navItems[index]),
                 ),
               );
             },
@@ -354,60 +363,90 @@ class _MainShellViewState extends State<MainShellView> {
     AppLocalizations l10n,
   ) {
     final isSelected = _selectedNav == item;
+    final isSupported = item != NavigationItem.sender || _isMac;
 
-    return Padding(
+    final itemWidget = Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
-      child: GestureDetector(
-        onTap: () => _onSelectNav(item),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppleTheme.spacing12,
-            vertical: AppleTheme.spacing8,
-          ),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? CupertinoDynamicColor.resolve(
-                    AppleTheme.systemBlue.withValues(alpha: 0.14),
-                    context,
-                  )
-                : CupertinoColors.transparent,
-            borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                item.icon,
-                size: 18,
-                color: isSelected
-                    ? AppleTheme.systemBlue
-                    : CupertinoDynamicColor.resolve(
-                        AppleTheme.secondaryLabel,
-                        context,
-                      ),
+      child: MouseRegion(
+        cursor: isSupported ? SystemMouseCursors.click : SystemMouseCursors.forbidden,
+        child: GestureDetector(
+          onTap: isSupported ? () => _onSelectNav(item) : null,
+          child: Opacity(
+            opacity: isSupported ? 1.0 : 0.38,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppleTheme.spacing12,
+                vertical: AppleTheme.spacing8,
               ),
-              const SizedBox(width: AppleTheme.spacing12),
-              Expanded(
-                child: Text(
-                  item.getTitle(l10n),
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? CupertinoDynamicColor.resolve(
+                        AppleTheme.systemBlue.withValues(alpha: 0.14),
+                        context,
+                      )
+                    : CupertinoColors.transparent,
+                borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    item.icon,
+                    size: 18,
                     color: isSelected
                         ? AppleTheme.systemBlue
                         : CupertinoDynamicColor.resolve(
-                            AppleTheme.label,
+                            AppleTheme.secondaryLabel,
                             context,
                           ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                  const SizedBox(width: AppleTheme.spacing12),
+                  Expanded(
+                    child: Text(
+                      item.getTitle(l10n),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        color: isSelected
+                            ? AppleTheme.systemBlue
+                            : CupertinoDynamicColor.resolve(
+                                AppleTheme.label,
+                                context,
+                              ),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (!isSupported)
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: CupertinoDynamicColor.resolve(
+                          AppleTheme.tertiarySystemFill,
+                          context,
+                        ),
+                        borderRadius:
+                            BorderRadius.circular(AppleTheme.radiusSmall),
+                      ),
+                      child: Text(
+                        'macOS',
+                        style: AppleTheme.caption.copyWith(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: AppleTheme.resolvedTertiaryLabel(context),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
+
+    return itemWidget;
   }
 
   Widget _buildSidebarFooter(BuildContext context, AppLocalizations l10n) {
@@ -469,6 +508,8 @@ class _MainShellViewState extends State<MainShellView> {
       NavigationItem.sender => SenderView(
           controller: widget.senderController,
           onOpenSettings: () => _onSelectNav(NavigationItem.settings),
+          onSwitchToReceiver: () => _onSelectNav(NavigationItem.receiver),
+          isMacOverride: widget.isMacOverride,
         ),
       NavigationItem.receiver =>
         ReceiverView(controller: widget.receiverController),

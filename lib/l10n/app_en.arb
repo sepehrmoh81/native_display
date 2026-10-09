@@ -79,6 +79,18 @@
   "@senderPermissionButton": {
     "description": "Button to request screen recording permission"
   },
+  "senderMacOnlyTitle": "macOS Required",
+  "@senderMacOnlyTitle": {
+    "description": "Title when Sender screen is opened on non-macOS"
+  },
+  "senderMacOnlyDescription": "Display extension is currently exclusive to macOS. On Windows, Native Display functions as a high-performance secondary display receiver.",
+  "@senderMacOnlyDescription": {
+    "description": "Description explaining why Sender is disabled on Windows"
+  },
+  "switchToReceiver": "Switch to Receive Display",
+  "@switchToReceiver": {
+    "description": "Button to switch to Receiver mode on Windows"
+  },
   "modeExtend": "Extend Display (Virtual)",
   "@modeExtend": {
     "description": "Sender mode segment for virtual display extension"
@@ -166,10 +178,6 @@
   "selectLanguageTitle": "Select Language",
   "@selectLanguageTitle": {
     "description": "Title of language selection sheet"
-  },
-  "extendMacOnlyNotice": "Virtual display extension is currently supported on macOS only. Mirror mode is active on this system.",
-  "@extendMacOnlyNotice": {
-    "description": "Notice when virtual display extension is disabled on non-macOS"
   },
   "sectionSourceDisplay": "SELECT DISPLAY OR WINDOW",
   "@sectionSourceDisplay": {

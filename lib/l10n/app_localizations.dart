@@ -214,6 +214,24 @@ abstract class AppLocalizations {
   /// **'Grant Permission'**
   String get senderPermissionButton;
 
+  /// Title when Sender screen is opened on non-macOS
+  ///
+  /// In en, this message translates to:
+  /// **'macOS Required'**
+  String get senderMacOnlyTitle;
+
+  /// Description explaining why Sender is disabled on Windows
+  ///
+  /// In en, this message translates to:
+  /// **'Display extension is currently exclusive to macOS. On Windows, Native Display functions as a high-performance secondary display receiver.'**
+  String get senderMacOnlyDescription;
+
+  /// Button to switch to Receiver mode on Windows
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to Receive Display'**
+  String get switchToReceiver;
+
   /// Sender mode segment for virtual display extension
   ///
   /// In en, this message translates to:
@@ -339,12 +357,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select Language'**
   String get selectLanguageTitle;
-
-  /// Notice when virtual display extension is disabled on non-macOS
-  ///
-  /// In en, this message translates to:
-  /// **'Virtual display extension is currently supported on macOS only. Mirror mode is active on this system.'**
-  String get extendMacOnlyNotice;
 
   /// Header for mirror source selection
   ///

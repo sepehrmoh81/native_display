@@ -70,6 +70,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get senderPermissionButton => 'Conceder permiso';
 
   @override
+  String get senderMacOnlyTitle => 'Se requiere macOS';
+
+  @override
+  String get senderMacOnlyDescription =>
+      'La extensión de pantalla actualmente es exclusiva de macOS. En Windows, Native Display funciona como receptor de pantalla secundaria de alto rendimiento.';
+
+  @override
+  String get switchToReceiver => 'Cambiar a Recibir pantalla';
+
+  @override
   String get modeExtend => 'Extender pantalla (Virtual)';
 
   @override
@@ -135,10 +145,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get selectLanguageTitle => 'Seleccionar idioma';
-
-  @override
-  String get extendMacOnlyNotice =>
-      'La extensión de pantalla virtual actualmente solo es compatible con macOS. El modo de duplicación está activo en este sistema.';
 
   @override
   String get sectionSourceDisplay => 'SELECCIONAR PANTALLA O VENTANA';
