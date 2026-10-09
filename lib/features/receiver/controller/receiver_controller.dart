@@ -50,12 +50,18 @@ class ReceiverController extends ChangeNotifier {
         : 'Windows Secondary Display';
 
     // Signaling server message dispatch
+    signalingServer.onClientConnected = (client) {
+      debugPrint('[ReceiverController] Client connected to signaling server');
+      _activeClient ??= client;
+    };
+
     signalingServer.onMessage = (message, client) {
       _activeClient = client;
       webrtcManager.handleIncomingSignaling(message);
     };
 
     signalingServer.onClientDisconnected = (client) {
+      debugPrint('[ReceiverController] Client disconnected from signaling server');
       if (_activeClient == client) {
         _activeClient = null;
         webrtcManager.stopSession();
@@ -92,8 +98,10 @@ class ReceiverController extends ChangeNotifier {
       notifyListeners();
     });
 
-    // Start hosting and broadcasting
-    await startListening();
+    // Start hosting and broadcasting (Windows starts immediately; macOS starts when user selects receiver tab)
+    if (Platform.isWindows) {
+      await startListening();
+    }
   }
 
   void setDeviceName(String name) {
@@ -132,6 +140,20 @@ class ReceiverController extends ChangeNotifier {
       _status = ReceiverStatus.error;
       _errorMessage = 'Could not start receiver service: $e';
       notifyListeners();
+    }
+  }
+
+  Future<void> stopListening() async {
+    try {
+      discoveryService.stopBroadcasting();
+      await signalingServer.stop();
+      await webrtcManager.stopSession();
+      _activeClient = null;
+      _status = ReceiverStatus.idle;
+      _errorMessage = null;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[ReceiverController] stopListening error: $e');
     }
   }
 

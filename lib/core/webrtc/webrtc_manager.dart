@@ -36,6 +36,9 @@ class WebRTCManager extends ChangeNotifier {
   DesktopCapturerSource? _selectedSource;
   DesktopCapturerSource? get selectedSource => _selectedSource;
 
+  RTCPeerConnectionState? _peerConnectionState;
+  RTCIceConnectionState? _iceConnectionState;
+
   final List<RTCIceCandidate> _remoteCandidatesQueue = [];
   bool _isRemoteDescriptionSet = false;
 
@@ -208,7 +211,11 @@ class WebRTCManager extends ChangeNotifier {
         if (event.streams.isNotEmpty) {
           _remoteStream = event.streams[0];
           remoteRenderer.srcObject = _remoteStream;
-          _status = ConnectionStateStatus.connected;
+          if (_iceConnectionState == RTCIceConnectionState.RTCIceConnectionStateConnected ||
+              _iceConnectionState == RTCIceConnectionState.RTCIceConnectionStateCompleted ||
+              _peerConnectionState == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
+            _status = ConnectionStateStatus.connected;
+          }
           notifyListeners();
         }
       };
@@ -320,6 +327,7 @@ class WebRTCManager extends ChangeNotifier {
   }
 
   void _handlePeerConnectionStateChange(RTCPeerConnectionState state) {
+    _peerConnectionState = state;
     debugPrint('[WebRTCManager] PeerConnectionState: $state');
     switch (state) {
       case RTCPeerConnectionState.RTCPeerConnectionStateConnected:
@@ -344,6 +352,7 @@ class WebRTCManager extends ChangeNotifier {
   }
 
   void _handleIceConnectionStateChange(RTCIceConnectionState state) {
+    _iceConnectionState = state;
     debugPrint('[WebRTCManager] IceConnectionState: $state');
     switch (state) {
       case RTCIceConnectionState.RTCIceConnectionStateConnected:
@@ -440,6 +449,8 @@ class WebRTCManager extends ChangeNotifier {
 
     _remoteCandidatesQueue.clear();
     _isRemoteDescriptionSet = false;
+    _peerConnectionState = null;
+    _iceConnectionState = null;
   }
 
   @override

@@ -34,20 +34,23 @@ void main() async {
     });
   }
 
-  // Initialize WebRTC
-  final webrtcManager = WebRTCManager();
-  await webrtcManager.initialize();
+  // Initialize WebRTC managers separately for Sender and Receiver
+  final senderWebRTCManager = WebRTCManager();
+  await senderWebRTCManager.initialize();
+
+  final receiverWebRTCManager = WebRTCManager();
+  await receiverWebRTCManager.initialize();
 
   // Initialize Network & Controllers
   final discoveryService = DiscoveryService();
   final settingsController = SettingsController();
   final senderController = SenderController(
     discoveryService: discoveryService,
-    webrtcManager: webrtcManager,
+    webrtcManager: senderWebRTCManager,
   );
   final receiverController = ReceiverController(
     discoveryService: discoveryService,
-    webrtcManager: webrtcManager,
+    webrtcManager: receiverWebRTCManager,
   );
 
   // Initialize Tray / Menu Bar Extra
@@ -67,13 +70,14 @@ void main() async {
       onQuit: () {
         senderController.dispose();
         receiverController.dispose();
+        senderWebRTCManager.dispose();
+        receiverWebRTCManager.dispose();
       },
     );
   }
 
   runApp(NativeDisplayApp(
     discoveryService: discoveryService,
-    webrtcManager: webrtcManager,
     senderController: senderController,
     receiverController: receiverController,
     settingsController: settingsController,
@@ -82,7 +86,6 @@ void main() async {
 
 class NativeDisplayApp extends StatelessWidget {
   final DiscoveryService discoveryService;
-  final WebRTCManager webrtcManager;
   final SenderController senderController;
   final ReceiverController receiverController;
   final SettingsController settingsController;
@@ -90,7 +93,6 @@ class NativeDisplayApp extends StatelessWidget {
   const NativeDisplayApp({
     super.key,
     required this.discoveryService,
-    required this.webrtcManager,
     required this.senderController,
     required this.receiverController,
     required this.settingsController,
@@ -111,7 +113,6 @@ class NativeDisplayApp extends StatelessWidget {
       ),
       home: MainShellView(
         discoveryService: discoveryService,
-        webrtcManager: webrtcManager,
         senderController: senderController,
         receiverController: receiverController,
         settingsController: settingsController,
@@ -133,7 +134,6 @@ enum NavigationItem {
 
 class MainShellView extends StatefulWidget {
   final DiscoveryService discoveryService;
-  final WebRTCManager webrtcManager;
   final SenderController senderController;
   final ReceiverController receiverController;
   final SettingsController settingsController;
@@ -141,7 +141,6 @@ class MainShellView extends StatefulWidget {
   const MainShellView({
     super.key,
     required this.discoveryService,
-    required this.webrtcManager,
     required this.senderController,
     required this.receiverController,
     required this.settingsController,
@@ -160,6 +159,31 @@ class _MainShellViewState extends State<MainShellView> {
     // Default to Sender on macOS, Receiver on Windows
     _selectedNav =
         Platform.isWindows ? NavigationItem.receiver : NavigationItem.sender;
+    widget.senderController.addListener(_onStateUpdate);
+    widget.receiverController.addListener(_onStateUpdate);
+  }
+
+  @override
+  void dispose() {
+    widget.senderController.removeListener(_onStateUpdate);
+    widget.receiverController.removeListener(_onStateUpdate);
+    super.dispose();
+  }
+
+  void _onStateUpdate() {
+    if (mounted) setState(() {});
+  }
+
+  void _onSelectNav(NavigationItem item) {
+    if (_selectedNav == item) return;
+    setState(() => _selectedNav = item);
+    if (!Platform.isWindows) {
+      if (item == NavigationItem.receiver) {
+        widget.receiverController.startListening();
+      } else {
+        widget.receiverController.stopListening();
+      }
+    }
   }
 
   @override
@@ -173,9 +197,7 @@ class _MainShellViewState extends State<MainShellView> {
           return CupertinoTabScaffold(
             tabBar: CupertinoTabBar(
               currentIndex: NavigationItem.values.indexOf(_selectedNav),
-              onTap: (index) {
-                setState(() => _selectedNav = NavigationItem.values[index]);
-              },
+              onTap: (index) => _onSelectNav(NavigationItem.values[index]),
               items: NavigationItem.values
                   .map((item) => BottomNavigationBarItem(
                         icon: Icon(item.icon),
@@ -310,7 +332,7 @@ class _MainShellViewState extends State<MainShellView> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: GestureDetector(
-        onTap: () => setState(() => _selectedNav = item),
+        onTap: () => _onSelectNav(item),
         child: Container(
           padding: const EdgeInsets.symmetric(
             horizontal: AppleTheme.spacing12,
@@ -359,6 +381,10 @@ class _MainShellViewState extends State<MainShellView> {
   }
 
   Widget _buildSidebarFooter(BuildContext context) {
+    final isConnected =
+        widget.senderController.webrtcManager.status == ConnectionStateStatus.connected ||
+        widget.receiverController.webrtcManager.status == ConnectionStateStatus.connected;
+
     return Padding(
       padding: const EdgeInsets.all(AppleTheme.spacing16),
       child: Container(
@@ -376,7 +402,7 @@ class _MainShellViewState extends State<MainShellView> {
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: widget.webrtcManager.status == ConnectionStateStatus.connected
+                color: isConnected
                     ? AppleTheme.systemGreen
                     : AppleTheme.systemOrange,
                 shape: BoxShape.circle,
@@ -385,9 +411,7 @@ class _MainShellViewState extends State<MainShellView> {
             const SizedBox(width: AppleTheme.spacing8),
             Expanded(
               child: Text(
-                widget.webrtcManager.status == ConnectionStateStatus.connected
-                    ? 'Display Active'
-                    : 'System Ready',
+                isConnected ? 'Display Active' : 'System Ready',
                 style: AppleTheme.footnote.copyWith(
                   fontWeight: FontWeight.w600,
                   color: AppleTheme.resolvedSecondaryLabel(context),
@@ -405,8 +429,11 @@ class _MainShellViewState extends State<MainShellView> {
       NavigationItem.sender => SenderView(controller: widget.senderController),
       NavigationItem.receiver =>
         ReceiverView(controller: widget.receiverController),
-      NavigationItem.diagnostics =>
-        DiagnosticsView(webrtcManager: widget.webrtcManager),
+      NavigationItem.diagnostics => DiagnosticsView(
+          webrtcManager: _selectedNav == NavigationItem.receiver
+              ? widget.receiverController.webrtcManager
+              : widget.senderController.webrtcManager,
+        ),
       NavigationItem.settings =>
         SettingsView(controller: widget.settingsController),
     };
