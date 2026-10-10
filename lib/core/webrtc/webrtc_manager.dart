@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'sdp_optimizer.dart';
 import 'stream_quality.dart';
 import '../network/models/signaling_message.dart';
 
@@ -42,6 +43,10 @@ class WebRTCManager extends ChangeNotifier {
   final List<RTCIceCandidate> _remoteCandidatesQueue = [];
   bool _isRemoteDescriptionSet = false;
 
+  int? _lastBytesSent;
+  int? _lastBytesReceived;
+  DateTime? _lastStatsTimestamp;
+
   Future<void> initialize() async {
     await localRenderer.initialize();
     await remoteRenderer.initialize();
@@ -49,6 +54,9 @@ class WebRTCManager extends ChangeNotifier {
 
   void updateQualityConfig(StreamQualityConfig config) {
     _qualityConfig = config;
+    if (_peerConnection != null && _status == ConnectionStateStatus.connected) {
+      _applySenderParameters();
+    }
     notifyListeners();
   }
 
@@ -106,17 +114,23 @@ class WebRTCManager extends ChangeNotifier {
     }
 
     try {
-      // 1. Capture Screen Stream
+      // 1. Capture Screen Stream with numeric frameRate for macOS ScreenCaptureKit
       final Map<String, dynamic> mediaConstraints = {
         'audio': false,
         'video': {
           'deviceId': {'exact': _selectedSource?.id ?? '0'},
           'mandatory': {
-            'minWidth': '${_qualityConfig.width}',
-            'minHeight': '${_qualityConfig.height}',
-            'minFrameRate': '${_qualityConfig.effectiveFps}',
-            'maxFrameRate': '${_qualityConfig.effectiveFps}',
+            'frameRate': _qualityConfig.effectiveFps,
+            'minFrameRate': _qualityConfig.effectiveFps,
+            'maxFrameRate': _qualityConfig.effectiveFps,
+            'width': _qualityConfig.width,
+            'height': _qualityConfig.height,
+            'minWidth': _qualityConfig.width,
+            'minHeight': _qualityConfig.height,
           },
+          'optional': [
+            {'fps': _qualityConfig.effectiveFps},
+          ],
         },
       };
 
@@ -153,12 +167,20 @@ class WebRTCManager extends ChangeNotifier {
         await _peerConnection!.addTrack(track, _localStream!);
       }
 
-      // 4. Create and send Offer (Unified Plan)
+      // 4. Create, optimize with dynamic SDP munging, and send Offer
       debugPrint('[WebRTCManager] Creating Offer...');
-      final offer = await _peerConnection!.createOffer({});
-      debugPrint('[WebRTCManager] Setting local description (Offer)...');
+      var offer = await _peerConnection!.createOffer({});
+      final optimizedSdp = SdpOptimizer.optimize(
+        offer.sdp ?? '',
+        bitrateKbps: _qualityConfig.effectiveBitrateKbps,
+        fps: _qualityConfig.effectiveFps,
+        preferH264: _qualityConfig.enableHardwareAcceleration,
+      );
+      offer = RTCSessionDescription(optimizedSdp, offer.type);
+
+      debugPrint('[WebRTCManager] Setting local description (Offer with optimized SDP)...');
       await _peerConnection!.setLocalDescription(offer);
-      debugPrint('[WebRTCManager] Local description (Offer) set, dispatching Offer');
+      await _applySenderParameters();
 
       onSignalingMessageReady?.call(SignalingMessage(
         type: SignalingType.offer,
@@ -228,6 +250,51 @@ class WebRTCManager extends ChangeNotifier {
     }
   }
 
+  // --- SENDER PARAMETERS OPTIMIZATION ---
+
+  Future<void> _applySenderParameters() async {
+    if (_peerConnection == null) return;
+    try {
+      final senders = await _peerConnection!.getSenders();
+      for (final sender in senders) {
+        if (sender.track?.kind == 'video') {
+          final params = sender.parameters;
+          params.degradationPreference =
+              RTCDegradationPreference.MAINTAIN_FRAMERATE;
+          final targetBitrateBps = _qualityConfig.effectiveBitrateKbps * 1000;
+          final minBitrateBps = (_qualityConfig.effectiveBitrateKbps * 1000 ~/ 3)
+              .clamp(2000000, targetBitrateBps);
+
+          if (params.encodings != null && params.encodings!.isNotEmpty) {
+            for (final encoding in params.encodings!) {
+              encoding.maxBitrate = targetBitrateBps;
+              encoding.minBitrate = minBitrateBps;
+              encoding.maxFramerate = _qualityConfig.effectiveFps;
+              encoding.priority = RTCPriorityType.high;
+              encoding.networkPriority = RTCPriorityType.high;
+            }
+          } else {
+            params.encodings = [
+              RTCRtpEncoding(
+                active: true,
+                maxBitrate: targetBitrateBps,
+                minBitrate: minBitrateBps,
+                maxFramerate: _qualityConfig.effectiveFps,
+                priority: RTCPriorityType.high,
+                networkPriority: RTCPriorityType.high,
+              ),
+            ];
+          }
+          await sender.setParameters(params);
+          debugPrint(
+              '[WebRTCManager] Applied video sender parameters: maxBitrate=${targetBitrateBps}bps, minBitrate=${minBitrateBps}bps, fps=${_qualityConfig.effectiveFps}, degradation=maintainFramerate');
+        }
+      }
+    } catch (e) {
+      debugPrint('[WebRTCManager] Notice: Could not apply sender parameters: $e');
+    }
+  }
+
   // --- SIGNALING MESSAGE DISPATCH ---
 
   Future<void> handleIncomingSignaling(SignalingMessage message) async {
@@ -239,8 +306,15 @@ class WebRTCManager extends ChangeNotifier {
           if (_peerConnection == null) {
             await prepareReceiverSession();
           }
+          final rawOfferSdp = message.data['sdp'] as String?;
+          final optimizedOfferSdp = SdpOptimizer.optimize(
+            rawOfferSdp ?? '',
+            bitrateKbps: _qualityConfig.effectiveBitrateKbps,
+            fps: _qualityConfig.effectiveFps,
+            preferH264: _qualityConfig.enableHardwareAcceleration,
+          );
           final sdp = RTCSessionDescription(
-            message.data['sdp'] as String?,
+            optimizedOfferSdp,
             (message.data['type'] as String?) ?? 'offer',
           );
           await _peerConnection!.setRemoteDescription(sdp);
@@ -248,9 +322,16 @@ class WebRTCManager extends ChangeNotifier {
           debugPrint('[WebRTCManager] Set remote description (Offer)');
           await _drainRemoteCandidatesQueue();
 
-          final answer = await _peerConnection!.createAnswer({});
+          var answer = await _peerConnection!.createAnswer({});
+          final optimizedAnswerSdp = SdpOptimizer.optimize(
+            answer.sdp ?? '',
+            bitrateKbps: _qualityConfig.effectiveBitrateKbps,
+            fps: _qualityConfig.effectiveFps,
+            preferH264: _qualityConfig.enableHardwareAcceleration,
+          );
+          answer = RTCSessionDescription(optimizedAnswerSdp, answer.type);
           await _peerConnection!.setLocalDescription(answer);
-          debugPrint('[WebRTCManager] Set local description (Answer)');
+          debugPrint('[WebRTCManager] Set local description (Answer with optimized SDP)');
 
           onSignalingMessageReady?.call(SignalingMessage(
             type: SignalingType.answer,
@@ -262,14 +343,22 @@ class WebRTCManager extends ChangeNotifier {
         case SignalingType.answer:
           debugPrint('[WebRTCManager] Processing Answer...');
           if (_peerConnection != null) {
+            final rawAnswerSdp = message.data['sdp'] as String?;
+            final optimizedAnswerSdp = SdpOptimizer.optimize(
+              rawAnswerSdp ?? '',
+              bitrateKbps: _qualityConfig.effectiveBitrateKbps,
+              fps: _qualityConfig.effectiveFps,
+              preferH264: _qualityConfig.enableHardwareAcceleration,
+            );
             final sdp = RTCSessionDescription(
-              message.data['sdp'] as String?,
+              optimizedAnswerSdp,
               (message.data['type'] as String?) ?? 'answer',
             );
             await _peerConnection!.setRemoteDescription(sdp);
             _isRemoteDescriptionSet = true;
             debugPrint('[WebRTCManager] Set remote description (Answer) successfully!');
             await _drainRemoteCandidatesQueue();
+            await _applySenderParameters();
           } else {
             debugPrint('[WebRTCManager] Warning: Received Answer but _peerConnection is null');
           }
@@ -332,6 +421,7 @@ class WebRTCManager extends ChangeNotifier {
     switch (state) {
       case RTCPeerConnectionState.RTCPeerConnectionStateConnected:
         _status = ConnectionStateStatus.connected;
+        _applySenderParameters();
         notifyListeners();
         break;
       case RTCPeerConnectionState.RTCPeerConnectionStateConnecting:
@@ -359,6 +449,7 @@ class WebRTCManager extends ChangeNotifier {
       case RTCIceConnectionState.RTCIceConnectionStateCompleted:
         if (_status != ConnectionStateStatus.connected) {
           _status = ConnectionStateStatus.connected;
+          _applySenderParameters();
           notifyListeners();
         }
         break;
@@ -379,19 +470,45 @@ class WebRTCManager extends ChangeNotifier {
 
   void _startStatsMonitoring() {
     _statsTimer?.cancel();
+    _lastBytesSent = null;
+    _lastBytesReceived = null;
+    _lastStatsTimestamp = null;
+
     _statsTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (_peerConnection != null && _status == ConnectionStateStatus.connected) {
         try {
+          final now = DateTime.now();
           final stats = await _peerConnection!.getStats();
-          double currentFps = _qualityConfig.effectiveFps.toDouble();
+          double currentFps = 0.0;
           double latency = 12.0; // Default typical LAN RTT ms
-          double bitrate = _qualityConfig.effectiveBitrateKbps / 1000.0;
           int lostPackets = 0;
+          String detectedCodec = _qualityConfig.enableHardwareAcceleration
+              ? 'H.264 Hardware'
+              : 'Software Video';
+          int currentBytesSent = 0;
+          int currentBytesReceived = 0;
+          bool hasOutbound = false;
+          bool hasInbound = false;
 
           for (final report in stats) {
-            if (report.type == 'inbound-rtp' || report.type == 'outbound-rtp') {
+            if (report.type == 'outbound-rtp') {
+              hasOutbound = true;
               if (report.values['framesPerSecond'] != null) {
                 currentFps = (report.values['framesPerSecond'] as num).toDouble();
+              }
+              if (report.values['bytesSent'] != null) {
+                currentBytesSent += (report.values['bytesSent'] as num).toInt();
+              }
+              if (report.values['roundTripTime'] != null) {
+                latency = ((report.values['roundTripTime'] as num).toDouble()) * 1000.0;
+              }
+            } else if (report.type == 'inbound-rtp') {
+              hasInbound = true;
+              if (report.values['framesPerSecond'] != null) {
+                currentFps = (report.values['framesPerSecond'] as num).toDouble();
+              }
+              if (report.values['bytesReceived'] != null) {
+                currentBytesReceived += (report.values['bytesReceived'] as num).toInt();
               }
               if (report.values['roundTripTime'] != null) {
                 latency = ((report.values['roundTripTime'] as num).toDouble()) * 1000.0;
@@ -399,15 +516,68 @@ class WebRTCManager extends ChangeNotifier {
               if (report.values['packetsLost'] != null) {
                 lostPackets = (report.values['packetsLost'] as num).toInt();
               }
+            } else if (report.type == 'candidate-pair' || report.type == 'googCandidatePair') {
+              if (report.values['currentRoundTripTime'] != null) {
+                latency = ((report.values['currentRoundTripTime'] as num).toDouble()) * 1000.0;
+              } else if (report.values['roundTripTime'] != null) {
+                latency = ((report.values['roundTripTime'] as num).toDouble()) * 1000.0;
+              }
+              if (!hasOutbound && report.values['bytesSent'] != null) {
+                currentBytesSent = (report.values['bytesSent'] as num).toInt();
+              }
+              if (!hasInbound && report.values['bytesReceived'] != null) {
+                currentBytesReceived = (report.values['bytesReceived'] as num).toInt();
+              }
+            } else if (report.type == 'codec') {
+              final mime = report.values['mimeType']?.toString() ?? '';
+              if (mime.toUpperCase().contains('H264')) {
+                detectedCodec = 'H.264 Hardware';
+              } else if (mime.toUpperCase().contains('VP8')) {
+                detectedCodec = 'VP8';
+              } else if (mime.toUpperCase().contains('VP9')) {
+                detectedCodec = 'VP9';
+              } else if (mime.toUpperCase().contains('AV1')) {
+                detectedCodec = 'AV1';
+              }
             }
+          }
+
+          // Calculate actual Mbps throughput
+          double calculatedBitrateMbps = 0.0;
+          if (_lastStatsTimestamp != null) {
+            final seconds = now.difference(_lastStatsTimestamp!).inMilliseconds / 1000.0;
+            if (seconds > 0) {
+              if (hasOutbound && _lastBytesSent != null) {
+                final delta = currentBytesSent - _lastBytesSent!;
+                if (delta >= 0) {
+                  calculatedBitrateMbps = (delta * 8.0) / (seconds * 1000000.0);
+                }
+              } else if (hasInbound && _lastBytesReceived != null) {
+                final delta = currentBytesReceived - _lastBytesReceived!;
+                if (delta >= 0) {
+                  calculatedBitrateMbps = (delta * 8.0) / (seconds * 1000000.0);
+                }
+              }
+            }
+          }
+
+          if (currentBytesSent > 0) _lastBytesSent = currentBytesSent;
+          if (currentBytesReceived > 0) _lastBytesReceived = currentBytesReceived;
+          _lastStatsTimestamp = now;
+
+          // If currentFps is 0 but stream is connected, fallback to previous or target
+          if (currentFps == 0 && _metrics.fps > 0) {
+            currentFps = _metrics.fps;
           }
 
           _metrics = StreamMetrics(
             fps: currentFps,
             latencyMs: latency,
-            bitrateMbps: bitrate,
+            bitrateMbps: calculatedBitrateMbps > 0
+                ? calculatedBitrateMbps
+                : (_metrics.bitrateMbps > 0 ? _metrics.bitrateMbps : 0.0),
             packetLossCount: lostPackets,
-            codec: 'H.264 High-Profile',
+            codec: detectedCodec,
           );
           notifyListeners();
         } catch (_) {}
@@ -451,6 +621,9 @@ class WebRTCManager extends ChangeNotifier {
     _isRemoteDescriptionSet = false;
     _peerConnectionState = null;
     _iceConnectionState = null;
+    _lastBytesSent = null;
+    _lastBytesReceived = null;
+    _lastStatsTimestamp = null;
   }
 
   @override

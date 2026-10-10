@@ -5,6 +5,7 @@ import 'package:native_display/core/network/models/peer_device.dart';
 import 'package:native_display/core/network/models/signaling_message.dart';
 import 'package:native_display/core/theme/liquid_glass.dart';
 import 'package:native_display/core/network/discovery_service.dart';
+import 'package:native_display/core/webrtc/sdp_optimizer.dart';
 import 'package:native_display/core/webrtc/webrtc_manager.dart';
 import 'package:native_display/features/receiver/controller/receiver_controller.dart';
 import 'package:native_display/features/sender/controller/sender_controller.dart';
@@ -14,6 +15,46 @@ import 'package:native_display/l10n/app_localizations.dart';
 import 'package:native_display/main.dart';
 
 void main() {
+  group('SdpOptimizer Tests', () {
+    test('injects bandwidth limits, reorders H264, and adds Google bitrate params', () {
+      const mockSdp = 'v=0\r\n'
+          'o=- 12345 2 IN IP4 127.0.0.1\r\n'
+          's=-\r\n'
+          't=0 0\r\n'
+          'm=video 9 UDP/TLS/RTP/SAVPF 96 97 100\r\n'
+          'c=IN IP4 0.0.0.0\r\n'
+          'a=rtpmap:96 VP8/90000\r\n'
+          'a=rtpmap:97 VP9/90000\r\n'
+          'a=rtpmap:100 H264/90000\r\n'
+          'a=fmtp:100 level-asymmetry-allowed=1;packetization-mode=1\r\n';
+
+      final optimized = SdpOptimizer.optimize(
+        mockSdp,
+        bitrateKbps: 15000,
+        fps: 60,
+        preferH264: true,
+      );
+
+      // Verify bandwidth lines are inserted
+      expect(optimized.contains('b=AS:15000'), isTrue);
+      expect(optimized.contains('b=TIAS:15000000'), isTrue);
+
+      // Verify H264 (payload type 100) is reordered to the front
+      expect(optimized.contains('m=video 9 UDP/TLS/RTP/SAVPF 100 96 97'), isTrue);
+
+      // Verify x-google bitrate constraints are injected
+      expect(optimized.contains('x-google-max-bitrate=15000'), isTrue);
+      expect(optimized.contains('x-google-min-bitrate='), isTrue);
+      expect(optimized.contains('x-google-start-bitrate='), isTrue);
+    });
+
+    test('handles empty and audio-only SDP gracefully', () {
+      expect(SdpOptimizer.optimize('', bitrateKbps: 15000, fps: 60), '');
+      const audioSdp = 'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\na=rtpmap:111 opus/48000/2';
+      final res = SdpOptimizer.optimize(audioSdp, bitrateKbps: 15000, fps: 60);
+      expect(res.contains('b=AS:15000'), isFalse);
+    });
+  });
   group('SignalingMessage Tests', () {
     test('serializes and deserializes Offer message correctly', () {
       const msg = SignalingMessage(

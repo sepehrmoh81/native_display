@@ -514,9 +514,14 @@ class _MainShellViewState extends State<MainShellView> {
       NavigationItem.receiver =>
         ReceiverView(controller: widget.receiverController),
       NavigationItem.diagnostics => DiagnosticsView(
-          webrtcManager: _selectedNav == NavigationItem.receiver
+          webrtcManager: widget.receiverController.status == ReceiverStatus.connected
               ? widget.receiverController.webrtcManager
-              : widget.senderController.webrtcManager,
+              : (widget.senderController.status == SenderStatus.streaming ||
+                      widget.senderController.status == SenderStatus.connecting)
+                  ? widget.senderController.webrtcManager
+                  : (_isMac
+                      ? widget.senderController.webrtcManager
+                      : widget.receiverController.webrtcManager),
         ),
       NavigationItem.settings =>
         SettingsView(controller: widget.settingsController),
