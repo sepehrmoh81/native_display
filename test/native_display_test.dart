@@ -178,6 +178,17 @@ void main() {
 
       controller.setVirtualFps(120.0);
       expect(controller.virtualFps, 120.0);
+      expect(controller.autoRefreshRate, false);
+      expect(controller.qualityConfig.customFps, 120);
+
+      // Explicit FPS overrides receiver specs
+      expect(controller.resolveRefreshRate(receiverRefreshRate: 165), 120.0);
+
+      // Auto mode matches receiver refresh rate (e.g. 165 Hz)
+      controller.setAutoRefreshRate(true);
+      expect(controller.autoRefreshRate, true);
+      expect(controller.resolveRefreshRate(receiverRefreshRate: 165), 165.0);
+      expect(controller.resolveRefreshRate(receiverRefreshRate: null), 120.0);
 
       controller.setVirtualHiDPI(false);
       expect(controller.virtualHiDPI, false);

@@ -149,7 +149,34 @@ class _ReceiverViewState extends State<ReceiverView> {
                   l10n.receiverConnectionInfo(widget.controller.signalingServer.port),
                   style: AppleTheme.footnote.copyWith(color: AppleTheme.resolvedTertiaryLabel(context)),
                 ),
-                const SizedBox(height: AppleTheme.spacing24),
+                const SizedBox(height: AppleTheme.spacing8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppleTheme.systemBlue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppleTheme.radiusPill),
+                    border: Border.all(
+                      color: AppleTheme.systemBlue.withValues(alpha: 0.25),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(CupertinoIcons.tv, size: 12, color: AppleTheme.systemBlue),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Display: ${widget.controller.screenWidth}×${widget.controller.screenHeight} @ ${widget.controller.refreshRate}Hz',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppleTheme.systemBlue,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppleTheme.spacing20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

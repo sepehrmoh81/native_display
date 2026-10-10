@@ -128,9 +128,11 @@ class _SettingsViewState extends State<SettingsView> {
                     ),
                     child: _buildPopupButton(
                       context: context,
-                      text: controller.virtualFps == 120.0
-                          ? '120 Hz (ProMotion)'
-                          : '60 Hz',
+                      text: controller.autoRefreshRate
+                          ? 'Auto (Match Receiver)'
+                          : controller.virtualFps == 120.0
+                              ? '120 Hz (ProMotion)'
+                              : '${controller.virtualFps.round()} Hz',
                       onPressed: () => _showRefreshRatePicker(context, l10n),
                     ),
                   ),
@@ -519,8 +521,12 @@ class _SettingsViewState extends State<SettingsView> {
 
   void _showRefreshRatePicker(BuildContext context, AppLocalizations l10n) {
     final options = [
+      (0.0, 'Auto (Match Receiver Display)'),
       (60.0, '60 Hz'),
       (120.0, '120 Hz (ProMotion)'),
+      (144.0, '144 Hz (Gaming)'),
+      (165.0, '165 Hz (Ultra High Refresh)'),
+      (240.0, '240 Hz (Extreme)'),
     ];
 
     showCupertinoModalPopup(
@@ -528,11 +534,18 @@ class _SettingsViewState extends State<SettingsView> {
       builder: (sheetContext) => CupertinoActionSheet(
         title: Text(l10n.refreshRate),
         actions: options.map((item) {
-          final isSelected = widget.controller.virtualFps == item.$1;
+          final isSelected = item.$1 == 0.0
+              ? widget.controller.autoRefreshRate
+              : (!widget.controller.autoRefreshRate &&
+                  widget.controller.virtualFps == item.$1);
 
           return CupertinoActionSheetAction(
             onPressed: () {
-              widget.controller.setVirtualFps(item.$1);
+              if (item.$1 == 0.0) {
+                widget.controller.setAutoRefreshRate(true);
+              } else {
+                widget.controller.setVirtualFps(item.$1);
+              }
               Navigator.of(sheetContext).pop();
             },
             child: Row(

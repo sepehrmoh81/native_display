@@ -71,14 +71,9 @@ class SenderController extends ChangeNotifier {
     return h;
   }
 
-  double get virtualFps {
-    if (settingsController.resolutionPreset == VirtualResolutionPreset.auto &&
-        _selectedReceiver != null &&
-        _selectedReceiver!.refreshRate > 0) {
-      return _selectedReceiver!.refreshRate.toDouble();
-    }
-    return settingsController.virtualFps;
-  }
+  double get virtualFps => settingsController.resolveRefreshRate(
+        receiverRefreshRate: _selectedReceiver?.refreshRate,
+      );
 
   bool get virtualHiDPI => settingsController.virtualHiDPI;
 
@@ -310,8 +305,12 @@ class SenderController extends ChangeNotifier {
       debugPrint('[SenderController] Target receiver: ${_selectedReceiver?.name} at ${_selectedReceiver?.endpoint}');
       await signalingClient.connect(_selectedReceiver!.endpoint);
 
-      // 5. Sync quality config and start WebRTC sender session with the target source
-      webrtcManager.updateQualityConfig(settingsController.qualityConfig);
+      // 5. Sync quality config with resolved virtual display refresh rate & start session
+      final activeFps = virtualFps.round();
+      final syncedConfig = settingsController.qualityConfig.copyWith(
+        customFps: activeFps > 0 ? activeFps : 60,
+      );
+      webrtcManager.updateQualityConfig(syncedConfig);
       await webrtcManager.startSenderSession(source: targetCaptureSource);
     } catch (e) {
       // If we created a virtual display but connection failed, clean it up

@@ -55,6 +55,9 @@ class SettingsController extends ChangeNotifier {
   bool _enableVirtualDisplays = true;
   bool get enableVirtualDisplays => _enableVirtualDisplays;
 
+  bool _autoRefreshRate = true;
+  bool get autoRefreshRate => _autoRefreshRate;
+
   (int, int) resolveDisplayDimensions({int? receiverWidth, int? receiverHeight}) {
     if (_resolutionPreset == VirtualResolutionPreset.auto &&
         receiverWidth != null &&
@@ -69,13 +72,29 @@ class SettingsController extends ChangeNotifier {
     );
   }
 
+  double resolveRefreshRate({int? receiverRefreshRate}) {
+    if (_autoRefreshRate &&
+        receiverRefreshRate != null &&
+        receiverRefreshRate > 0) {
+      return receiverRefreshRate.toDouble();
+    }
+    return _virtualFps;
+  }
+
   void setResolutionPreset(VirtualResolutionPreset preset) {
     _resolutionPreset = preset;
     notifyListeners();
   }
 
+  void setAutoRefreshRate(bool auto) {
+    _autoRefreshRate = auto;
+    notifyListeners();
+  }
+
   void setVirtualFps(double fps) {
     _virtualFps = fps;
+    _autoRefreshRate = false;
+    _qualityConfig = _qualityConfig.copyWith(customFps: fps.round());
     notifyListeners();
   }
 
@@ -99,6 +118,8 @@ class SettingsController extends ChangeNotifier {
   }
 
   void updateFps(int fps) {
+    _virtualFps = fps.toDouble();
+    _autoRefreshRate = false;
     _qualityConfig = _qualityConfig.copyWith(customFps: fps);
     notifyListeners();
   }

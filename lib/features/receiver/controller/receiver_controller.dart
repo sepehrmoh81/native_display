@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:window_manager/window_manager.dart';
@@ -32,6 +33,15 @@ class ReceiverController extends ChangeNotifier with WindowListener {
   String _deviceName = 'Windows Display';
   String get deviceName => _deviceName;
 
+  int _screenWidth = 1920;
+  int get screenWidth => _screenWidth;
+
+  int _screenHeight = 1080;
+  int get screenHeight => _screenHeight;
+
+  int _refreshRate = 60;
+  int get refreshRate => _refreshRate;
+
   bool _isFullscreen = false;
   bool get isFullscreen => _isFullscreen;
 
@@ -44,7 +54,49 @@ class ReceiverController extends ChangeNotifier with WindowListener {
     _init();
   }
 
+  void _detectDisplayCapabilities() {
+    try {
+      final dispatcher = ui.PlatformDispatcher.instance;
+      ui.Display? primaryDisplay;
+
+      if (dispatcher.views.isNotEmpty) {
+        primaryDisplay = dispatcher.views.first.display;
+      } else if (dispatcher.displays.isNotEmpty) {
+        primaryDisplay = dispatcher.displays.first;
+      }
+
+      if (primaryDisplay != null) {
+        final w = primaryDisplay.size.width.toInt();
+        final h = primaryDisplay.size.height.toInt();
+        final hz = primaryDisplay.refreshRate.round();
+
+        if (w > 0 && h > 0) {
+          _screenWidth = w;
+          _screenHeight = h;
+        }
+        if (hz > 0) {
+          _refreshRate = hz;
+        }
+        debugPrint(
+            '[ReceiverController] Detected display: ${_screenWidth}x$_screenHeight @ ${_refreshRate}Hz');
+      }
+    } catch (e) {
+      debugPrint('[ReceiverController] Could not detect display specs: $e');
+    }
+  }
+
+  void overrideDisplayCapabilities({int? width, int? height, int? refreshRate}) {
+    if (width != null && width > 0) _screenWidth = width;
+    if (height != null && height > 0) _screenHeight = height;
+    if (refreshRate != null && refreshRate > 0) _refreshRate = refreshRate;
+    if (_status == ReceiverStatus.listening) {
+      startListening();
+    }
+    notifyListeners();
+  }
+
   Future<void> _init() async {
+    _detectDisplayCapabilities();
     if (Platform.isMacOS || Platform.isWindows) {
       windowManager.addListener(this);
     }
@@ -121,13 +173,16 @@ class ReceiverController extends ChangeNotifier with WindowListener {
     notifyListeners();
 
     try {
-      // 1. Start Signaling WebSocket server
+      // 1. Detect latest display capabilities
+      _detectDisplayCapabilities();
+
+      // 2. Start Signaling WebSocket server
       await signalingServer.start();
 
-      // 2. Prepare WebRTC receiver session
+      // 3. Prepare WebRTC receiver session
       await webrtcManager.prepareReceiverSession();
 
-      // 3. Broadcast service via mDNS and UDP
+      // 4. Broadcast service via mDNS and UDP with true monitor capabilities
       await discoveryService.startBroadcasting(
         deviceName: _deviceName,
         port: AppConstants.defaultSignalingPort,
@@ -135,9 +190,9 @@ class ReceiverController extends ChangeNotifier with WindowListener {
         platform: Platform.isWindows
             ? DevicePlatform.windows
             : (Platform.isMacOS ? DevicePlatform.macos : DevicePlatform.unknown),
-        screenWidth: 1920,
-        screenHeight: 1080,
-        refreshRate: 60,
+        screenWidth: _screenWidth,
+        screenHeight: _screenHeight,
+        refreshRate: _refreshRate,
       );
     } catch (e) {
       _status = ReceiverStatus.error;
