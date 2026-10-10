@@ -338,7 +338,12 @@ void main() {
       final receiverController = ReceiverController(
         discoveryService: discovery,
         webrtcManager: webrtc,
+        autoStartOnWindows: false,
       );
+      addTearDown(() {
+        receiverController.dispose();
+        senderController.dispose();
+      });
 
       await tester.pumpWidget(
         CupertinoApp(

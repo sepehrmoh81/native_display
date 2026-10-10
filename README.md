@@ -2,13 +2,12 @@
 
 <div align="center">
 
+[![Release](https://img.shields.io/github/v/release/sepehrmoh81/native_display?style=flat-square&logo=github)](https://github.com/sepehrmoh81/native_display/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 [![Flutter](https://img.shields.io/badge/Flutter-%3E%3D3.13-02569B?style=flat-square&logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-%3E%3D3.13-0175C2?style=flat-square&logo=dart)](https://dart.dev)
-[![Platform](https://img.shields.io/badge/Platforms-macOS%20%7C%20Windows%20%7C%20iOS%20%7C%20Android-lightgrey?style=flat-square&logo=apple)](https://github.com/sepehrmoh81/native_display)
 [![Streaming](https://img.shields.io/badge/Streaming-WebRTC%20Peer--to--Peer-F34F29?style=flat-square&logo=webrtc)](https://webrtc.org)
 [![Tests](https://img.shields.io/badge/Tests-14%20passed-brightgreen?style=flat-square)](test/native_display_test.dart)
-[![i18n](https://img.shields.io/badge/i18n-English%20%7C%20Espa%C3%B1ol%20%7C%20Deutsch-blue?style=flat-square)](lib/l10n)
 [![AI-Generated](https://img.shields.io/badge/Codebase-100%25%20AI--Generated-8A2BE2?style=flat-square&logo=openai)](#-ai-generation-notice)
 
 **High-performance, ultra-low-latency wireless secondary monitor extension and screen mirroring built with Flutter, WebRTC, and native macOS display APIs.**

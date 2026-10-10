@@ -46,10 +46,12 @@ class ReceiverController extends ChangeNotifier with WindowListener {
   bool get isFullscreen => _isFullscreen;
 
   WebSocketChannel? _activeClient;
+  final bool autoStartOnWindows;
 
   ReceiverController({
     required this.discoveryService,
     required this.webrtcManager,
+    this.autoStartOnWindows = true,
   }) {
     _init();
   }
@@ -154,7 +156,7 @@ class ReceiverController extends ChangeNotifier with WindowListener {
     });
 
     // Start hosting and broadcasting (Windows starts immediately; macOS starts when user selects receiver tab)
-    if (Platform.isWindows) {
+    if (autoStartOnWindows && Platform.isWindows) {
       await startListening();
     }
   }

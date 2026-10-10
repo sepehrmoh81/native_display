@@ -63,7 +63,7 @@ jobs:
     name: Build macOS
     needs: check-version
     if: needs.check-version.outputs.should_release == 'true'
-    runs-on: macos-14
+    runs-on: macos-26
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
