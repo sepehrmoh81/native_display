@@ -1,0 +1,176 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check-version:
+    name: Check Version & Duplicate Guard
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.version_check.outputs.should_release }}
+      tag_name: ${{ steps.version_check.outputs.tag_name }}
+      version: ${{ steps.version_check.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract Version & Check Duplicate
+        id: version_check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Extract version from pubspec.yaml (e.g. 1.0.0+1)
+          VERSION_RAW=$(grep '^version:' pubspec.yaml | awk '{print $2}' | tr -d '"'\''\r\n')
+          VERSION_BASE=$(echo "$VERSION_RAW" | cut -d'+' -f1)
+          TAG_NAME="v$VERSION_BASE"
+
+          echo "Detected project version: $VERSION_RAW (base: $VERSION_BASE)"
+          echo "Target Git tag: $TAG_NAME"
+
+          # Check if GitHub Release or Git Tag already exists
+          DUPLICATE=false
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Release $TAG_NAME already exists on GitHub."
+            DUPLICATE=true
+          elif git ls-remote --exit-code --tags origin "refs/tags/$TAG_NAME" >/dev/null 2>&1; then
+            echo "Git tag $TAG_NAME already exists in remote repository."
+            DUPLICATE=true
+          fi
+
+          if [ "$DUPLICATE" = "true" ]; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "### ⏭️ Release Skipped" >> $GITHUB_STEP_SUMMARY
+            echo "Version **$TAG_NAME** already exists on GitHub as a release or tag." >> $GITHUB_STEP_SUMMARY
+            echo "No build or release was performed. To create a new release, bump the version in \`pubspec.yaml\`." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+            echo "version=$VERSION_BASE" >> "$GITHUB_OUTPUT"
+            echo "### 🚀 Preparing Release: $TAG_NAME" >> $GITHUB_STEP_SUMMARY
+            echo "New version detected (**$TAG_NAME**). Proceeding to build macOS and Windows release binaries." >> $GITHUB_STEP_SUMMARY
+          fi
+
+  build-macos:
+    name: Build macOS
+    needs: check-version
+    if: needs.check-version.outputs.should_release == 'true'
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run unit & widget tests
+        run: flutter test
+
+      - name: Build macOS Application
+        run: flutter build macos --release
+
+      - name: Package macOS Application (.dmg and .zip)
+        run: |
+          VERSION="${{ needs.check-version.outputs.version }}"
+          APP_PATH="build/macos/Build/Products/Release/native_display.app"
+          
+          # 1. Disk Image (.dmg) installer
+          hdiutil create -volname "Native Display" -srcfolder "$APP_PATH" -ov -format UDZO "NativeDisplay-macOS-v${VERSION}.dmg"
+          
+          # 2. Portable Zip archive (ditto preserves symlinks & executable permissions)
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "NativeDisplay-macOS-v${VERSION}.zip"
+
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: |
+            NativeDisplay-macOS-*.dmg
+            NativeDisplay-macOS-*.zip
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Windows
+    needs: check-version
+    if: needs.check-version.outputs.should_release == 'true'
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run unit & widget tests
+        run: flutter test
+
+      - name: Build Windows Application
+        run: flutter build windows --release
+
+      - name: Package Windows ZIP
+        shell: pwsh
+        run: |
+          $version = "${{ needs.check-version.outputs.version }}"
+          $releaseDir = "build\windows\x64\runner\Release\*"
+          $zipName = "NativeDisplay-Windows-x64-v$version.zip"
+          Compress-Archive -Path $releaseDir -DestinationPath $zipName -Force
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: NativeDisplay-Windows-x64-*.zip
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: [check-version, build-macos, build-windows]
+    if: needs.check-version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-artifacts
+          path: dist
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-artifacts
+          path: dist
+
+      - name: Display Release Assets
+        run: ls -la dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.check-version.outputs.tag_name }}
+          name: Native Display ${{ needs.check-version.outputs.tag_name }}
+          files: dist/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

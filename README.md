@@ -7,7 +7,7 @@
 [![Dart](https://img.shields.io/badge/Dart-%3E%3D3.13-0175C2?style=flat-square&logo=dart)](https://dart.dev)
 [![Platform](https://img.shields.io/badge/Platforms-macOS%20%7C%20Windows%20%7C%20iOS%20%7C%20Android-lightgrey?style=flat-square&logo=apple)](https://github.com/sepehrmoh81/native_display)
 [![Streaming](https://img.shields.io/badge/Streaming-WebRTC%20Peer--to--Peer-F34F29?style=flat-square&logo=webrtc)](https://webrtc.org)
-[![Tests](https://img.shields.io/badge/Tests-12%20passed-brightgreen?style=flat-square)](test/native_display_test.dart)
+[![Tests](https://img.shields.io/badge/Tests-14%20passed-brightgreen?style=flat-square)](test/native_display_test.dart)
 [![i18n](https://img.shields.io/badge/i18n-English%20%7C%20Espa%C3%B1ol%20%7C%20Deutsch-blue?style=flat-square)](lib/l10n)
 [![AI-Generated](https://img.shields.io/badge/Codebase-100%25%20AI--Generated-8A2BE2?style=flat-square&logo=openai)](#-ai-generation-notice)
 
@@ -28,10 +28,12 @@
 ## 🌟 Key Features
 
 - **🖥️ macOS Virtual Display Extension**: Creates real macOS virtual displays using private CoreGraphics (`CGVirtualDisplay`) APIs. macOS treats the stream as a physical monitor, allowing full desktop workspace arrangement, custom resolutions, and Retina HiDPI scaling without physical dummy plugs.
-- **⚡ Ultra-Low-Latency WebRTC Streaming**: Peer-to-peer streaming powered by WebRTC with hardware-accelerated H.264/VP8/VP9 encoding and decoding, delivering smooth 60 FPS desktop mirroring with sub-frame response times.
+- **⚡ Ultra-Low-Latency WebRTC Streaming**: Peer-to-peer streaming powered by WebRTC with hardware-accelerated H.264 encoding and decoding, delivering up to 165Hz/240Hz desktop mirroring with sub-frame response times.
+- **🚀 High Refresh Rates & Auto-Detection**: Supports 60 Hz, 120 Hz (ProMotion), 144 Hz, 165 Hz, and 240 Hz. Receivers dynamically detect their physical monitor resolution and native refresh rate, broadcasting accurate specifications to automatically match the virtual display.
+- **🎬 Fluid Motion Optimization**: Configures WebRTC RTP sender degradation preference to `maintain-framerate`, eliminating aggressive frame drops during window movement, gaming, and rapid scrolling.
 - **🔍 Zero-Config Local Discovery**: Automatic device discovery over local Wi-Fi and mobile hotspots using Bonjour / mDNS (`_nativedisplay._tcp`), backed by an automatic UDP broadcast fallback.
 - **💎 Apple HIG Liquid Glass UI**: Clean, glassmorphic Cupertino interface inspired by Apple Human Interface Guidelines, complete with dynamic backdrop blurs, dark/light theme switching, and fluid controls.
-- **📊 Real-Time Diagnostics HUD**: Live telemetry monitoring round-trip time (RTT), instantaneous bitrate, frame rate (FPS), packets lost, and WebRTC ICE connection states.
+- **📊 Real-Time Diagnostics HUD**: Live telemetry calculating instantaneous network throughput (Mbps), frame rate (FPS), round-trip time (RTT), packets lost, active codec, and WebRTC ICE connection states.
 - **🌍 Full Multilingual Support (i18n)**: Out-of-the-box localization in **English**, **Spanish** (*Español*), and **German** (*Deutsch*).
 - **📌 System Tray & Menu Bar Companion**: Desktop menu bar and system tray integration via `tray_manager` and `window_manager` to maintain streaming in the background without cluttering the dock.
 - **📺 Receiver Fullscreen & Multi-Screen**: Dedicated receiver view with smooth fullscreen toggling and aspect-ratio-preserving rendering.
@@ -93,7 +95,10 @@ flowchart TD
 ### 3. Signaling & WebRTC Pipeline (`lib/core/webrtc`)
 - **WebSocket Signaling**: Embedded Dart HTTP/WebSocket server using `shelf` and `shelf_web_socket` running on port `8989`.
 - **Payload Protocol**: Type-safe JSON serialization for `offer`, `answer`, `candidate`, and `bye` messages.
-- **Media Optimization**: Dynamic SDP munging and bitrate constraints configured for low-latency desktop screen mirroring.
+- **Dynamic SDP Munging (`SdpOptimizer`)**: Injects application-specific bandwidth allocations (`b=AS:<kbps>` and `b=TIAS:<bps>`), prioritizes hardware-accelerated **H.264** video payload types, and appends Google Congestion Control parameters (`x-google-min-bitrate`, `x-google-start-bitrate`, `x-google-max-bitrate`).
+- **High-Framerate ScreenCaptureKit Integration**: Passes numeric integer constraints to macOS `ScreenCaptureKit` (`FlutterRTCDesktopCapturer`), unlocking full 60, 120, 144, 165, and 240 FPS capture without frame throttling.
+- **RTP Sender Parameter Control**: Applies `RTCDegradationPreference.maintainFramerate`, priority flags, and dynamic bitrate ranges on `RTCRtpSender` encodings to preserve smooth framerate under network motion.
+- **Instantaneous Telemetry Engine**: Computes true wire throughput in real time (`delta(bytesSent) / delta(time)` and `delta(bytesReceived) / delta(time)`) rather than displaying static preset values.
 
 ---
 
@@ -158,7 +163,7 @@ native_display/
 │   │   ├── network/                       # Bonjour discovery, UDP fallback & WebSocket signaling
 │   │   ├── theme/                         # Cupertino Apple HIG & Liquid Glass theme
 │   │   ├── tray/                          # Menu bar & system tray controller
-│   │   └── webrtc/                        # PeerConnection management & stream telemetry
+│   │   └── webrtc/                        # PeerConnection, SdpOptimizer & stream telemetry
 │   ├── features/
 │   │   ├── diagnostics/                   # Telemetry overlay (RTT, bitrate, FPS, packets)
 │   │   ├── receiver/                      # Remote display receiver view & controls
@@ -186,19 +191,21 @@ flutter test
 
 Expected output:
 ```
-00:00 +0: SignalingMessage Tests serializes and deserializes Offer message correctly
-00:00 +1: SignalingMessage Tests serializes and deserializes Candidate message correctly
-00:00 +2: PeerDevice Tests correctly decodes PeerDevice JSON
-00:00 +3: SettingsController Tests updates quality preset and propagates bitrate and fps
-00:00 +4: SettingsController Tests toggles hardware acceleration and low latency
-00:00 +5: SettingsController Tests manages locale selection
-00:00 +6: SettingsController Tests manages virtual resolution presets and dimension resolving
-00:00 +7: Localization & Translation Tests verifies English, Spanish, and German AppLocalizations
-00:00 +8: UI & Cupertino Widget Tests renders LiquidGlassSurface properly
-00:00 +9: UI & Cupertino Widget Tests renders localized CupertinoApp in Spanish and German
-00:00 +10: UI & Cupertino Widget Tests renders disabled macOS-only placeholder when SenderView is opened on non-macOS
-00:00 +11: UI & Cupertino Widget Tests MainShellView dims Extend Display and defaults to Receiver when isMacOverride is false
-00:00 +12: All tests passed!
+00:00 +0: SdpOptimizer Tests injects bandwidth limits, reorders H264, and adds Google bitrate params
+00:00 +1: SdpOptimizer Tests handles empty and audio-only SDP gracefully
+00:00 +2: SignalingMessage Tests serializes and deserializes Offer message correctly
+00:00 +3: SignalingMessage Tests serializes and deserializes Candidate message correctly
+00:00 +4: PeerDevice Tests correctly decodes PeerDevice JSON
+00:00 +5: SettingsController Tests updates quality preset and propagates bitrate and fps
+00:00 +6: SettingsController Tests toggles hardware acceleration and low latency
+00:00 +7: SettingsController Tests manages locale selection
+00:00 +8: SettingsController Tests manages virtual resolution presets and dimension resolving
+00:00 +9: Localization & Translation Tests verifies English, Spanish, and German AppLocalizations
+00:00 +10: UI & Cupertino Widget Tests renders LiquidGlassSurface properly
+00:00 +11: UI & Cupertino Widget Tests renders localized CupertinoApp in Spanish and German
+00:00 +12: UI & Cupertino Widget Tests renders disabled macOS-only placeholder when SenderView is opened on non-macOS
+00:00 +13: UI & Cupertino Widget Tests MainShellView dims Extend Display and defaults to Receiver when isMacOverride is false
+00:00 +14: All tests passed!
 ```
 
 ---
