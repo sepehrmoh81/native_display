@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="native_display"
+        android:label="Native Display"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

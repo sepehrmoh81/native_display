@@ -1,11 +1,11 @@
 {
-    "name": "native_display",
-    "short_name": "native_display",
+    "name": "Native Display",
+    "short_name": "Native Display",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Wireless secondary monitor and low-latency screen mirroring built with Flutter.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "ir.poggernet" "\0"
-            VALUE "FileDescription", "native_display" "\0"
+            VALUE "FileDescription", "Native Display" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "native_display" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 ir.poggernet. All rights reserved." "\0"
             VALUE "OriginalFilename", "native_display.exe" "\0"
-            VALUE "ProductName", "native_display" "\0"
+            VALUE "ProductName", "Native Display" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
