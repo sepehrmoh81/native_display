@@ -150,6 +150,17 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate Changelog with git-cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --verbose --unreleased --tag ${{ needs.check-version.outputs.tag_name }} --strip all -o RELEASE_CHANGELOG.md
+
       - name: Download macOS Artifacts
         uses: actions/download-artifact@v4
         with:
@@ -162,15 +173,18 @@ jobs:
           name: windows-artifacts
           path: dist
 
-      - name: Display Release Assets
-        run: ls -la dist/
+      - name: Display Release Assets & Changelog
+        run: |
+          ls -la dist/
+          echo "=== Generated Changelog ==="
+          cat RELEASE_CHANGELOG.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.check-version.outputs.tag_name }}
           name: Native Display ${{ needs.check-version.outputs.tag_name }}
+          body_path: RELEASE_CHANGELOG.md
           files: dist/*
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
