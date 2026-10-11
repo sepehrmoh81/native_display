@@ -92,9 +92,9 @@ BEGIN
             VALUE "CompanyName", "ir.poggernet" "\0"
             VALUE "FileDescription", "Native Display" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "Native Display" "\0"
+            VALUE "InternalName", "NativeDisplay" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 ir.poggernet. All rights reserved." "\0"
-            VALUE "OriginalFilename", "Native Display.exe" "\0"
+            VALUE "OriginalFilename", "NativeDisplay.exe" "\0"
             VALUE "ProductName", "Native Display" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
