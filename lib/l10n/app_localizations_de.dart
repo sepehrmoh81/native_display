@@ -215,6 +215,29 @@ class AppLocalizationsDe extends AppLocalizations {
       'Verwende diesen Computer als leistungsstarkes zweites Display.';
 
   @override
+  String get discoveryToggleLabel => 'Erkennung';
+
+  @override
+  String get discoveryToggleSubtitle =>
+      'Anderen Geräten in diesem Netzwerk erlauben, dieses Display zu erkennen und zu verbinden.';
+
+  @override
+  String get statusDiscoveryDisabled => 'Erkennung inaktiv';
+
+  @override
+  String get discoveryDisabledTitle => 'Display-Erkennung ist angehalten';
+
+  @override
+  String get discoveryDisabledSubtitle =>
+      'Aktiviere die Erkennung, um eingehende Bildschirmübertragungen von anderen Computern zu empfangen.';
+
+  @override
+  String get enableDiscovery => 'Erkennung aktivieren';
+
+  @override
+  String get overlayHideControls => 'Bedienelemente ausblenden';
+
+  @override
   String get statusListening => 'Wartet im lokalen Netzwerk';
 
   @override

@@ -269,6 +269,34 @@
   "@receiverSubtitle": {
     "description": "Subtitle explaining receiver purpose"
   },
+  "discoveryToggleLabel": "Discovery",
+  "@discoveryToggleLabel": {
+    "description": "Label for discovery switch"
+  },
+  "discoveryToggleSubtitle": "Allow other devices on this network to discover and connect to this display.",
+  "@discoveryToggleSubtitle": {
+    "description": "Subtitle explaining what discovery toggle does"
+  },
+  "statusDiscoveryDisabled": "Discovery Inactive",
+  "@statusDiscoveryDisabled": {
+    "description": "Receiver status pill when discovery is turned off"
+  },
+  "discoveryDisabledTitle": "Display Discovery Is Paused",
+  "@discoveryDisabledTitle": {
+    "description": "Title shown when discovery is disabled"
+  },
+  "discoveryDisabledSubtitle": "Turn on discovery to accept incoming screen mirroring or display extensions from other computers.",
+  "@discoveryDisabledSubtitle": {
+    "description": "Subtitle shown when discovery is disabled"
+  },
+  "enableDiscovery": "Turn On Discovery",
+  "@enableDiscovery": {
+    "description": "Action button to enable discovery"
+  },
+  "overlayHideControls": "Hide stream controls",
+  "@overlayHideControls": {
+    "description": "Accessibility label for chevron to hide floating stream controls"
+  },
   "statusListening": "Listening on Local Network",
   "@statusListening": {
     "description": "Receiver status pill when listening"

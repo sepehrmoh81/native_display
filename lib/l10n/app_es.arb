@@ -67,6 +67,13 @@
 
   "receiverTitle": "Recibir pantalla",
   "receiverSubtitle": "Usa este equipo como pantalla secundaria de alto rendimiento.",
+  "discoveryToggleLabel": "Detección",
+  "discoveryToggleSubtitle": "Permitir que otros dispositivos en esta red detecten y se conecten a esta pantalla.",
+  "statusDiscoveryDisabled": "Detección inactiva",
+  "discoveryDisabledTitle": "Detección de pantalla pausada",
+  "discoveryDisabledSubtitle": "Activa la detección para recibir transmisiones de pantalla o extensiones de otros equipos.",
+  "enableDiscovery": "Activar detección",
+  "overlayHideControls": "Ocultar controles",
   "statusListening": "A la escucha en red local",
   "receiverConnectionInfo": "Puerto: {port} • Detección local activa",
   "renameDevice": "Renombrar dispositivo",

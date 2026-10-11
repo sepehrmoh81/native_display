@@ -215,6 +215,29 @@ class AppLocalizationsEs extends AppLocalizations {
       'Usa este equipo como pantalla secundaria de alto rendimiento.';
 
   @override
+  String get discoveryToggleLabel => 'Detección';
+
+  @override
+  String get discoveryToggleSubtitle =>
+      'Permitir que otros dispositivos en esta red detecten y se conecten a esta pantalla.';
+
+  @override
+  String get statusDiscoveryDisabled => 'Detección inactiva';
+
+  @override
+  String get discoveryDisabledTitle => 'Detección de pantalla pausada';
+
+  @override
+  String get discoveryDisabledSubtitle =>
+      'Activa la detección para recibir transmisiones de pantalla o extensiones de otros equipos.';
+
+  @override
+  String get enableDiscovery => 'Activar detección';
+
+  @override
+  String get overlayHideControls => 'Ocultar controles';
+
+  @override
   String get statusListening => 'A la escucha en red local';
 
   @override

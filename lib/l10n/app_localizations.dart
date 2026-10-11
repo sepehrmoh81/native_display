@@ -478,6 +478,48 @@ abstract class AppLocalizations {
   /// **'Use this computer as a high-performance secondary display.'**
   String get receiverSubtitle;
 
+  /// Label for discovery switch
+  ///
+  /// In en, this message translates to:
+  /// **'Discovery'**
+  String get discoveryToggleLabel;
+
+  /// Subtitle explaining what discovery toggle does
+  ///
+  /// In en, this message translates to:
+  /// **'Allow other devices on this network to discover and connect to this display.'**
+  String get discoveryToggleSubtitle;
+
+  /// Receiver status pill when discovery is turned off
+  ///
+  /// In en, this message translates to:
+  /// **'Discovery Inactive'**
+  String get statusDiscoveryDisabled;
+
+  /// Title shown when discovery is disabled
+  ///
+  /// In en, this message translates to:
+  /// **'Display Discovery Is Paused'**
+  String get discoveryDisabledTitle;
+
+  /// Subtitle shown when discovery is disabled
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on discovery to accept incoming screen mirroring or display extensions from other computers.'**
+  String get discoveryDisabledSubtitle;
+
+  /// Action button to enable discovery
+  ///
+  /// In en, this message translates to:
+  /// **'Turn On Discovery'**
+  String get enableDiscovery;
+
+  /// Accessibility label for chevron to hide floating stream controls
+  ///
+  /// In en, this message translates to:
+  /// **'Hide stream controls'**
+  String get overlayHideControls;
+
   /// Receiver status pill when listening
   ///
   /// In en, this message translates to:

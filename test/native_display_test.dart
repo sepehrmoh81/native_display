@@ -8,6 +8,7 @@ import 'package:native_display/core/network/discovery_service.dart';
 import 'package:native_display/core/webrtc/sdp_optimizer.dart';
 import 'package:native_display/core/webrtc/webrtc_manager.dart';
 import 'package:native_display/features/receiver/controller/receiver_controller.dart';
+import 'package:native_display/features/receiver/view/receiver_view.dart';
 import 'package:native_display/features/sender/controller/sender_controller.dart';
 import 'package:native_display/features/sender/view/sender_view.dart';
 import 'package:native_display/features/settings/controller/settings_controller.dart';
@@ -365,6 +366,66 @@ void main() {
       expect(find.text('macOS'), findsOneWidget);
       // Expect Receive Display title is visible
       expect(find.text('Receive Display'), findsWidgets);
+    });
+
+    testWidgets('ReceiverView renders active standby card when discovery is enabled', (tester) async {
+      final discovery = DiscoveryService();
+      final webrtc = WebRTCManager();
+      final receiverController = ReceiverController(
+        discoveryService: discovery,
+        webrtcManager: webrtc,
+        autoStartOnWindows: false,
+      );
+      addTearDown(() => receiverController.dispose());
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: CupertinoPageScaffold(
+            child: ReceiverView(controller: receiverController),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Starts with discovery enabled: active card is visible
+      expect(receiverController.isDiscoveryEnabled, isTrue);
+      expect(find.byType(CupertinoSwitch), findsOneWidget);
+      expect(find.text('Rename Device'), findsOneWidget);
+      expect(find.text('Display Discovery Is Paused'), findsNothing);
+    });
+
+    testWidgets('ReceiverView renders dormant card when discovery is disabled', (tester) async {
+      final discovery = DiscoveryService();
+      final webrtc = WebRTCManager();
+      final receiverController = ReceiverController(
+        discoveryService: discovery,
+        webrtcManager: webrtc,
+        autoStartOnWindows: false,
+      );
+      addTearDown(() => receiverController.dispose());
+
+      await receiverController.setDiscoveryEnabled(false);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: CupertinoPageScaffold(
+            child: ReceiverView(controller: receiverController),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(receiverController.isDiscoveryEnabled, isFalse);
+      expect(find.text('Display Discovery Is Paused'), findsOneWidget);
+      expect(find.text('Discovery Inactive'), findsOneWidget);
+      expect(find.text('Turn On Discovery'), findsOneWidget);
+      expect(find.text('Rename Device'), findsNothing);
     });
   });
 }

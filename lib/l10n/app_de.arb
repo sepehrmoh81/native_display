@@ -67,6 +67,13 @@
 
   "receiverTitle": "Display empfangen",
   "receiverSubtitle": "Verwende diesen Computer als leistungsstarkes zweites Display.",
+  "discoveryToggleLabel": "Erkennung",
+  "discoveryToggleSubtitle": "Anderen Geräten in diesem Netzwerk erlauben, dieses Display zu erkennen und zu verbinden.",
+  "statusDiscoveryDisabled": "Erkennung inaktiv",
+  "discoveryDisabledTitle": "Display-Erkennung ist angehalten",
+  "discoveryDisabledSubtitle": "Aktiviere die Erkennung, um eingehende Bildschirmübertragungen von anderen Computern zu empfangen.",
+  "enableDiscovery": "Erkennung aktivieren",
+  "overlayHideControls": "Bedienelemente ausblenden",
   "statusListening": "Wartet im lokalen Netzwerk",
   "receiverConnectionInfo": "Port: {port} • Lokale Erkennung aktiv",
   "renameDevice": "Gerät umbenennen",

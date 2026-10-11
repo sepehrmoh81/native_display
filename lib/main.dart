@@ -201,7 +201,9 @@ class _MainShellViewState extends State<MainShellView> {
     setState(() => _selectedNav = item);
     if (!Platform.isWindows) {
       if (item == NavigationItem.receiver) {
-        widget.receiverController.startListening();
+        if (widget.receiverController.isDiscoveryEnabled) {
+          widget.receiverController.startListening();
+        }
       } else {
         widget.receiverController.stopListening();
       }

@@ -214,6 +214,29 @@ class AppLocalizationsEn extends AppLocalizations {
       'Use this computer as a high-performance secondary display.';
 
   @override
+  String get discoveryToggleLabel => 'Discovery';
+
+  @override
+  String get discoveryToggleSubtitle =>
+      'Allow other devices on this network to discover and connect to this display.';
+
+  @override
+  String get statusDiscoveryDisabled => 'Discovery Inactive';
+
+  @override
+  String get discoveryDisabledTitle => 'Display Discovery Is Paused';
+
+  @override
+  String get discoveryDisabledSubtitle =>
+      'Turn on discovery to accept incoming screen mirroring or display extensions from other computers.';
+
+  @override
+  String get enableDiscovery => 'Turn On Discovery';
+
+  @override
+  String get overlayHideControls => 'Hide stream controls';
+
+  @override
   String get statusListening => 'Listening on Local Network';
 
   @override

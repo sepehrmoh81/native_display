@@ -27,6 +27,9 @@ class ReceiverController extends ChangeNotifier with WindowListener {
   ReceiverStatus _status = ReceiverStatus.idle;
   ReceiverStatus get status => _status;
 
+  bool _discoveryEnabled = true;
+  bool get isDiscoveryEnabled => _discoveryEnabled;
+
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
@@ -205,16 +208,40 @@ class ReceiverController extends ChangeNotifier with WindowListener {
 
   Future<void> stopListening() async {
     try {
-      discoveryService.stopBroadcasting();
-      await signalingServer.stop();
-      await webrtcManager.stopSession();
-      _activeClient = null;
-      _status = ReceiverStatus.idle;
-      _errorMessage = null;
-      notifyListeners();
+      await discoveryService.stopBroadcasting();
     } catch (e) {
-      debugPrint('[ReceiverController] stopListening error: $e');
+      debugPrint('[ReceiverController] stopBroadcasting error: $e');
     }
+
+    try {
+      await signalingServer.stop();
+    } catch (e) {
+      debugPrint('[ReceiverController] signalingServer.stop error: $e');
+    }
+
+    try {
+      await webrtcManager.stopSession();
+    } catch (e) {
+      debugPrint('[ReceiverController] webrtcManager.stopSession error: $e');
+    }
+
+    _activeClient = null;
+    _status = ReceiverStatus.idle;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  Future<void> setDiscoveryEnabled(bool enabled) async {
+    _discoveryEnabled = enabled;
+    if (enabled) {
+      await startListening();
+    } else {
+      await stopListening();
+    }
+  }
+
+  Future<void> toggleDiscovery() async {
+    await setDiscoveryEnabled(!_discoveryEnabled);
   }
 
   @override

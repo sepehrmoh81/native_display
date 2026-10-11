@@ -86,7 +86,7 @@ jobs:
       - name: Package macOS Application (.dmg and .zip)
         run: |
           VERSION="${{ needs.check-version.outputs.version }}"
-          APP_PATH="build/macos/Build/Products/Release/native_display.app"
+          APP_PATH="build/macos/Build/Products/Release/Native Display.app"
           
           # 1. Disk Image (.dmg) installer
           hdiutil create -volname "Native Display" -srcfolder "$APP_PATH" -ov -format UDZO "NativeDisplay-macOS-v${VERSION}.dmg"
