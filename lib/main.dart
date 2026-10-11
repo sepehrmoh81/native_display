@@ -321,22 +321,11 @@ class _MainShellViewState extends State<MainShellView> {
       ),
       child: Row(
         children: [
-          Container(
+          Image.asset(
+            'assets/icons/logo.png',
             width: 30,
             height: 30,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(AppleTheme.radiusMedium),
-            ),
-            child: const Icon(
-              CupertinoIcons.macwindow,
-              color: CupertinoColors.white,
-              size: 16,
-            ),
+            filterQuality: FilterQuality.high,
           ),
           const SizedBox(width: AppleTheme.spacing12),
           Expanded(

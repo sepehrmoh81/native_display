@@ -35,6 +35,10 @@ class TrayController with TrayListener {
           'assets/icons/tray_icon.png', // Fallback or custom
           isTemplate: true,
         );
+      } else if (Platform.isWindows) {
+        await trayManager.setIcon(
+          'assets/icons/tray_icon_color.png',
+        );
       }
       await updateMenu(statusText: 'Ready', isStreaming: false);
       _isInitialized = true;
