@@ -27,6 +27,12 @@ class ReceiverController extends ChangeNotifier with WindowListener {
   ReceiverStatus _status = ReceiverStatus.idle;
   ReceiverStatus get status => _status;
 
+  @visibleForTesting
+  void setStatusForTesting(ReceiverStatus status) {
+    _status = status;
+    notifyListeners();
+  }
+
   bool _discoveryEnabled = true;
   bool get isDiscoveryEnabled => _discoveryEnabled;
 
@@ -264,10 +270,10 @@ class ReceiverController extends ChangeNotifier with WindowListener {
     if (_isFullscreen == value) return;
     try {
       _isFullscreen = value;
+      notifyListeners();
       if (Platform.isMacOS || Platform.isWindows) {
         await windowManager.setFullScreen(value);
       }
-      notifyListeners();
     } catch (e) {
       debugPrint('[ReceiverController] setFullscreen error: $e');
     }

@@ -86,6 +86,7 @@
   "step2Title": "Wähle \"{deviceName}\" unter Verfügbare Empfänger aus.",
   "step3Title": "Klicke auf Erweitern oder Spiegeln. Das Video wird automatisch mit WebRTC mit minimaler Latenz übertragen.",
   "receiverConnectedBadge": "Verbunden • Display-Stream aktiv",
+  "streamingActive": "Streaming",
   "windowedMode": "Fenster",
   "fullscreenMode": "Vollbild",
 

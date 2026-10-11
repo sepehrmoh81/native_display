@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
@@ -16,7 +17,52 @@ class ReceiverView extends StatefulWidget {
 }
 
 class _ReceiverViewState extends State<ReceiverView> {
-  bool _showOverlay = true;
+  bool _hudVisible = false;
+  bool _cursorVisible = true;
+  Timer? _hudHideTimer;
+  Timer? _cursorHideTimer;
+
+  @override
+  void dispose() {
+    _hudHideTimer?.cancel();
+    _cursorHideTimer?.cancel();
+    super.dispose();
+  }
+
+  void _revealHud() {
+    _hudHideTimer?.cancel();
+    if (!_hudVisible) {
+      setState(() => _hudVisible = true);
+    }
+    _startHudHideTimer(const Duration(milliseconds: 3500));
+  }
+
+  void _cancelHudHideTimer() {
+    _hudHideTimer?.cancel();
+  }
+
+  void _startHudHideTimer([Duration duration = const Duration(milliseconds: 2000)]) {
+    _hudHideTimer?.cancel();
+    _hudHideTimer = Timer(duration, () {
+      if (mounted && _hudVisible) {
+        setState(() => _hudVisible = false);
+      }
+    });
+  }
+
+  void _onPointerMove() {
+    if (!_cursorVisible) {
+      setState(() => _cursorVisible = true);
+    }
+    _cursorHideTimer?.cancel();
+    if (widget.controller.isFullscreen) {
+      _cursorHideTimer = Timer(const Duration(milliseconds: 3000), () {
+        if (mounted && _cursorVisible && widget.controller.isFullscreen) {
+          setState(() => _cursorVisible = false);
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +77,10 @@ class _ReceiverViewState extends State<ReceiverView> {
         if (isConnected) {
           return _buildActiveStreamingView(context, l10n);
         } else {
+          _hudHideTimer?.cancel();
+          _cursorHideTimer?.cancel();
+          _hudVisible = false;
+          _cursorVisible = true;
           return _buildStandbyView(context, l10n);
         }
       },
@@ -461,141 +511,204 @@ class _ReceiverViewState extends State<ReceiverView> {
         if (event is KeyDownEvent &&
             event.logicalKey == LogicalKeyboardKey.escape &&
             widget.controller.isFullscreen) {
+          _hudHideTimer?.cancel();
+          _cursorHideTimer?.cancel();
+          if (_hudVisible) {
+            setState(() {
+              _hudVisible = false;
+              _cursorVisible = true;
+            });
+          }
           widget.controller.setFullscreen(false);
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
       },
       child: MouseRegion(
-        onHover: (_) {
-          if (!_showOverlay) setState(() => _showOverlay = true);
-        },
+        cursor: (widget.controller.isFullscreen && !_cursorVisible)
+            ? SystemMouseCursors.none
+            : MouseCursor.defer,
+        onHover: (_) => _onPointerMove(),
         child: Stack(
           children: [
             // The Remote WebRTC Video View
             Positioned.fill(
               child: Container(
                 color: CupertinoColors.black,
-              child: RTCVideoView(
-                widget.controller.webrtcManager.remoteRenderer,
-                objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
+                child: RTCVideoView(
+                  widget.controller.webrtcManager.remoteRenderer,
+                  objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
+                ),
+              ),
+            ),
+
+            // Top-edge Proximity Trigger Strip
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 36,
+              child: MouseRegion(
+                opaque: false,
+                onEnter: (_) => _revealHud(),
+                onHover: (_) => _revealHud(),
+              ),
+            ),
+
+            // Floating Liquid Glass Functional Controls Overlay Capsule
+            Positioned(
+              top: AppleTheme.spacing16,
+              left: 0,
+              right: 0,
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: AnimatedSlide(
+                  offset: _hudVisible ? Offset.zero : const Offset(0, -1.2),
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOutCubic,
+                  child: AnimatedOpacity(
+                    opacity: _hudVisible ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    child: IgnorePointer(
+                      ignoring: !_hudVisible,
+                      child: MouseRegion(
+                        onEnter: (_) => _cancelHudHideTimer(),
+                        onExit: (_) => _startHudHideTimer(),
+                        child: _buildCompactStreamingCapsule(context, l10n),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactStreamingCapsule(
+      BuildContext context, AppLocalizations l10n) {
+    return LiquidGlassSurface(
+      variant: LiquidGlassVariant.clear,
+      borderRadius: AppleTheme.radiusPill,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppleTheme.spacing12,
+        vertical: AppleTheme.spacing8,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Live Indicator Dot & Text
+          Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: AppleTheme.systemGreen,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: AppleTheme.spacing8),
+          Text(
+            l10n.streamingActive,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: CupertinoColors.white,
+              letterSpacing: -0.1,
+            ),
+          ),
+          const SizedBox(width: AppleTheme.spacing12),
+
+          // Hairline Divider
+          Container(
+            width: 0.5,
+            height: 16,
+            color: const Color(0x33FFFFFF),
+          ),
+          const SizedBox(width: AppleTheme.spacing12),
+
+          // Windowed / Fullscreen Button
+          Semantics(
+            label: widget.controller.isFullscreen
+                ? l10n.windowedMode
+                : l10n.fullscreenMode,
+            button: true,
+            child: CupertinoButton(
+              minimumSize: const Size(28, 28),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: AppleTheme.spacing4,
+              ),
+              color: const Color(0x26FFFFFF),
+              borderRadius: BorderRadius.circular(AppleTheme.radiusPill),
+              onPressed: widget.controller.toggleFullscreen,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    widget.controller.isFullscreen
+                        ? CupertinoIcons.fullscreen_exit
+                        : CupertinoIcons.fullscreen,
+                    size: 13,
+                    color: CupertinoColors.white,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    widget.controller.isFullscreen
+                        ? l10n.windowedMode
+                        : l10n.fullscreenMode,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: CupertinoColors.white,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+          const SizedBox(width: AppleTheme.spacing8),
 
-          // Floating Liquid Glass Functional Controls Overlay
-          if (_showOverlay)
-            Positioned(
-              top: AppleTheme.spacing16,
-              left: AppleTheme.spacing16,
-              right: AppleTheme.spacing16,
-              child: LiquidGlassSurface(
-                variant: LiquidGlassVariant.clear,
-                borderRadius: AppleTheme.radiusLarge,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppleTheme.spacing16,
-                  vertical: AppleTheme.spacing12,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: const BoxDecoration(
-                        color: AppleTheme.systemGreen,
-                        shape: BoxShape.circle,
-                      ),
+          // Disconnect Button
+          Semantics(
+            label: l10n.disconnect,
+            button: true,
+            child: CupertinoButton(
+              minimumSize: const Size(28, 28),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: AppleTheme.spacing4,
+              ),
+              color: CupertinoColors.destructiveRed.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(AppleTheme.radiusPill),
+              onPressed: widget.controller.disconnectSender,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    CupertinoIcons.xmark,
+                    size: 13,
+                    color: CupertinoColors.white,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    l10n.disconnect,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: CupertinoColors.white,
                     ),
-                    const SizedBox(width: AppleTheme.spacing8),
-                    Text(
-                      l10n.receiverConnectedBadge,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: CupertinoColors.white,
-                      ),
-                    ),
-                    const Spacer(),
-                    CupertinoButton(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      color: const Color(0x33FFFFFF),
-                      borderRadius:
-                          BorderRadius.circular(AppleTheme.radiusSmall),
-                      onPressed: widget.controller.toggleFullscreen,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            widget.controller.isFullscreen
-                                ? CupertinoIcons.fullscreen_exit
-                                : CupertinoIcons.fullscreen,
-                            size: 14,
-                            color: CupertinoColors.white,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            widget.controller.isFullscreen
-                                ? l10n.windowedMode
-                                : l10n.fullscreenMode,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: CupertinoColors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: AppleTheme.spacing12),
-                    CupertinoButton(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      color: CupertinoColors.destructiveRed.withValues(alpha: 0.8),
-                      borderRadius:
-                          BorderRadius.circular(AppleTheme.radiusSmall),
-                      onPressed: widget.controller.disconnectSender,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            CupertinoIcons.xmark,
-                            size: 14,
-                            color: CupertinoColors.white,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            l10n.disconnect,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: CupertinoColors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: AppleTheme.spacing12),
-                    Semantics(
-                      label: l10n.overlayHideControls,
-                      button: true,
-                      child: CupertinoButton(
-                        minimumSize: const Size(28, 28),
-                        padding: const EdgeInsets.all(6),
-                        onPressed: () => setState(() => _showOverlay = false),
-                        child: const Icon(
-                          CupertinoIcons.chevron_up,
-                          size: 16,
-                          color: CupertinoColors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
+          ),
         ],
       ),
-    ),
-  );
-}
+    );
+  }
 
   void _showRenameDialog(BuildContext context, AppLocalizations l10n) {
     final textController =

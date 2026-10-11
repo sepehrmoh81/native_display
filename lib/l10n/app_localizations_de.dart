@@ -279,6 +279,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get receiverConnectedBadge => 'Verbunden • Display-Stream aktiv';
 
   @override
+  String get streamingActive => 'Streaming';
+
+  @override
   String get windowedMode => 'Fenster';
 
   @override

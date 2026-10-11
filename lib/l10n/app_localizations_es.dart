@@ -279,6 +279,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get receiverConnectedBadge => 'Conectado • Flujo de pantalla activo';
 
   @override
+  String get streamingActive => 'Transmitiendo';
+
+  @override
   String get windowedMode => 'Ventana';
 
   @override

@@ -1,5 +1,8 @@
+import 'dart:ui';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:native_display/core/constants/app_constants.dart';
 import 'package:native_display/core/network/models/peer_device.dart';
 import 'package:native_display/core/network/models/signaling_message.dart';
@@ -16,6 +19,16 @@ import 'package:native_display/l10n/app_localizations.dart';
 import 'package:native_display/main.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('window_manager'),
+      (MethodCall methodCall) async => null,
+    );
+  });
+
   group('SdpOptimizer Tests', () {
     test('injects bandwidth limits, reorders H264, and adds Google bitrate params', () {
       const mockSdp = 'v=0\r\n'
@@ -426,6 +439,112 @@ void main() {
       expect(find.text('Discovery Inactive'), findsOneWidget);
       expect(find.text('Turn On Discovery'), findsOneWidget);
       expect(find.text('Rename Device'), findsNothing);
+    });
+
+    testWidgets('ReceiverView renders active streaming view and reveals compact capsule HUD on top edge hover', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final discovery = DiscoveryService();
+      final webrtc = WebRTCManager();
+      final receiverController = ReceiverController(
+        discoveryService: discovery,
+        webrtcManager: webrtc,
+        autoStartOnWindows: false,
+      );
+      addTearDown(() => receiverController.dispose());
+
+      receiverController.setStatusForTesting(ReceiverStatus.connected);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: CupertinoPageScaffold(
+            child: ReceiverView(controller: receiverController),
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      // Verify RTCVideoView is rendered
+      expect(find.byType(RTCVideoView), findsOneWidget);
+
+      // Verify compact HUD is initially hidden off-screen (AnimatedSlide offset is (0, -1.2))
+      final slideFinder = find.byType(AnimatedSlide);
+      expect(slideFinder, findsOneWidget);
+      final AnimatedSlide slideWidget = tester.widget(slideFinder);
+      expect(slideWidget.offset, const Offset(0, -1.2));
+
+      final opacityFinder = find.byType(AnimatedOpacity);
+      expect(opacityFinder, findsOneWidget);
+      final AnimatedOpacity opacityWidget = tester.widget(opacityFinder);
+      expect(opacityWidget.opacity, 0.0);
+
+      // Hover over the top edge strip (y = 10)
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await gesture.addPointer(location: const Offset(640, 10));
+      await tester.pump();
+
+      // HUD should now be triggered to slide in and fade in
+      final AnimatedSlide revealedSlide = tester.widget(slideFinder);
+      expect(revealedSlide.offset, Offset.zero);
+      final AnimatedOpacity revealedOpacity = tester.widget(opacityFinder);
+      expect(revealedOpacity.opacity, 1.0);
+
+      // Fast forward animation
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Verify compact capsule contents
+      expect(find.text('Streaming'), findsOneWidget);
+      expect(find.text('Full Screen'), findsOneWidget);
+      expect(find.text('Disconnect'), findsOneWidget);
+
+      // Auto-hide timer test: after 3.5s of no interaction, HUD auto-hides
+      await tester.pump(const Duration(milliseconds: 3600));
+      final AnimatedSlide autoHiddenSlide = tester.widget(slideFinder);
+      expect(autoHiddenSlide.offset, const Offset(0, -1.2));
+
+      await gesture.removePointer();
+    });
+
+    testWidgets('ReceiverView handles Escape key to exit fullscreen mode', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final discovery = DiscoveryService();
+      final webrtc = WebRTCManager();
+      final receiverController = ReceiverController(
+        discoveryService: discovery,
+        webrtcManager: webrtc,
+        autoStartOnWindows: false,
+      );
+      addTearDown(() => receiverController.dispose());
+
+      receiverController.setStatusForTesting(ReceiverStatus.connected);
+      await receiverController.setFullscreen(true);
+      expect(receiverController.isFullscreen, isTrue);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: CupertinoPageScaffold(
+            child: ReceiverView(controller: receiverController),
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      // Press Escape key
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+
+      expect(receiverController.isFullscreen, isFalse);
     });
   });
 }

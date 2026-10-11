@@ -592,6 +592,12 @@ abstract class AppLocalizations {
   /// **'Connected • Display Stream Active'**
   String get receiverConnectedBadge;
 
+  /// Short status indicator in the floating capsule HUD
+  ///
+  /// In en, this message translates to:
+  /// **'Streaming'**
+  String get streamingActive;
+
   /// Overlay button to restore windowed view
   ///
   /// In en, this message translates to:

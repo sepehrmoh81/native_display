@@ -86,6 +86,7 @@
   "step2Title": "Selecciona \"{deviceName}\" en Receptores disponibles.",
   "step3Title": "Haz clic en Extender o Duplicar. El vídeo se transmitirá automáticamente mediante WebRTC de baja latencia.",
   "receiverConnectedBadge": "Conectado • Flujo de pantalla activo",
+  "streamingActive": "Transmitiendo",
   "windowedMode": "Ventana",
   "fullscreenMode": "Pantalla completa",
 

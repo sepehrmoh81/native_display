@@ -351,6 +351,10 @@
   "@receiverConnectedBadge": {
     "description": "Overlay status banner text when streaming"
   },
+  "streamingActive": "Streaming",
+  "@streamingActive": {
+    "description": "Short status indicator in the floating capsule HUD"
+  },
   "windowedMode": "Windowed",
   "@windowedMode": {
     "description": "Overlay button to restore windowed view"
