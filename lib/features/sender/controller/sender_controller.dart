@@ -311,7 +311,13 @@ class SenderController extends ChangeNotifier {
         customFps: activeFps > 0 ? activeFps : 60,
       );
       webrtcManager.updateQualityConfig(syncedConfig);
-      await webrtcManager.startSenderSession(source: targetCaptureSource);
+      final isWindowsReceiver =
+          _selectedReceiver?.platform == DevicePlatform.windows;
+      await webrtcManager.startSenderSession(
+        source: targetCaptureSource,
+        preferVp8: isWindowsReceiver ||
+            !settingsController.qualityConfig.enableHardwareAcceleration,
+      );
     } catch (e) {
       // If we created a virtual display but connection failed, clean it up
       if (_activeVirtualDisplay != null) {

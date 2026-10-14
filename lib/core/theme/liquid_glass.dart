@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'apple_theme.dart';
 
 enum LiquidGlassVariant {
@@ -76,6 +78,29 @@ class LiquidGlassSurface extends StatelessWidget {
               : const Color(0x33000000), // 20% hairline dark highlight
           width: 0.5,
         );
+
+    // Windows fallback: Direct3D 11 / Skia BackdropFilter causes massive frame lag
+    // (~3s per click) and message loop lockups. Use a clean, native solid/semi-translucent surface.
+    if (!kIsWeb && Platform.isWindows) {
+      final Color winBg = switch (variant) {
+        LiquidGlassVariant.regular => isDark
+            ? const Color(0xFF202022)
+            : const Color(0xFFF2F2F7),
+        LiquidGlassVariant.clear => isDark
+            ? const Color(0xE61C1C1E) // ~90% dark overlay for controls
+            : const Color(0xE6FFFFFF),
+      };
+
+      return Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: winBg,
+          borderRadius: BorderRadius.circular(borderRadius),
+          border: effectiveBorder,
+        ),
+        child: child,
+      );
+    }
 
     Widget content = Container(
       padding: padding,
