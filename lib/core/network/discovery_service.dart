@@ -67,8 +67,8 @@ class DiscoveryService extends ChangeNotifier {
         },
       );
       _bonsoirBroadcast = BonsoirBroadcast(service: service);
-      await _bonsoirBroadcast?.initialize();
-      await _bonsoirBroadcast?.start();
+      await _bonsoirBroadcast?.initialize().timeout(const Duration(seconds: 2));
+      await _bonsoirBroadcast?.start().timeout(const Duration(seconds: 2));
     } catch (e) {
       debugPrint('[DiscoveryService] Bonsoir broadcast warning: $e');
     }
@@ -125,7 +125,7 @@ class DiscoveryService extends ChangeNotifier {
     // 1. Bonsoir mDNS discovery
     try {
       _bonsoirDiscovery = BonsoirDiscovery(type: AppConstants.bonjourServiceType);
-      await _bonsoirDiscovery?.initialize();
+      await _bonsoirDiscovery?.initialize().timeout(const Duration(seconds: 2));
       _bonsoirDiscovery?.eventStream?.listen((event) async {
         if (event is BonsoirDiscoveryServiceFoundEvent) {
           event.service.resolve(_bonsoirDiscovery!.serviceResolver);
@@ -184,7 +184,7 @@ class DiscoveryService extends ChangeNotifier {
           _addOrUpdateDevice(device);
         }
       });
-      await _bonsoirDiscovery?.start();
+      await _bonsoirDiscovery?.start().timeout(const Duration(seconds: 2));
     } catch (e) {
       debugPrint('[DiscoveryService] Bonsoir discovery warning: $e');
     }

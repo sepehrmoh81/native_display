@@ -21,11 +21,13 @@ void main() async {
   // Desktop window customization
   if (Platform.isMacOS || Platform.isWindows) {
     await windowManager.ensureInitialized();
-    const windowOptions = WindowOptions(
-      size: Size(1080, 720),
-      minimumSize: Size(800, 560),
+    final windowOptions = WindowOptions(
+      size: const Size(1080, 720),
+      minimumSize: const Size(800, 560),
       center: true,
-      backgroundColor: CupertinoColors.transparent,
+      backgroundColor: Platform.isWindows
+          ? const Color(0xFF1C1C1E)
+          : CupertinoColors.transparent,
       skipTaskbar: false,
       title: 'Native Display',
     );

@@ -68,6 +68,30 @@ void main() {
       final res = SdpOptimizer.optimize(audioSdp, bitrateKbps: 15000, fps: 60);
       expect(res.contains('b=AS:15000'), isFalse);
     });
+
+    test('reorders VP8 to the front when preferVp8 is true', () {
+      const mockSdp = 'v=0\r\n'
+          'o=- 12345 2 IN IP4 127.0.0.1\r\n'
+          's=-\r\n'
+          't=0 0\r\n'
+          'm=video 9 UDP/TLS/RTP/SAVPF 100 96 97\r\n'
+          'c=IN IP4 0.0.0.0\r\n'
+          'a=rtpmap:96 VP8/90000\r\n'
+          'a=rtpmap:97 VP9/90000\r\n'
+          'a=rtpmap:100 H264/90000\r\n'
+          'a=fmtp:100 level-asymmetry-allowed=1;packetization-mode=1\r\n';
+
+      final optimized = SdpOptimizer.optimize(
+        mockSdp,
+        bitrateKbps: 12000,
+        fps: 60,
+        preferH264: false,
+        preferVp8: true,
+      );
+
+      expect(optimized.contains('m=video 9 UDP/TLS/RTP/SAVPF 96 100 97'), isTrue);
+      expect(optimized.contains('b=AS:12000'), isTrue);
+    });
   });
   group('SignalingMessage Tests', () {
     test('serializes and deserializes Offer message correctly', () {

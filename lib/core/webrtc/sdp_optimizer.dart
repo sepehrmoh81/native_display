@@ -10,6 +10,7 @@ class SdpOptimizer {
     required int bitrateKbps,
     required int fps,
     bool preferH264 = true,
+    bool preferVp8 = false,
   }) {
     if (sdp.isEmpty) return sdp;
 
@@ -19,16 +20,24 @@ class SdpOptimizer {
 
     bool inVideoSection = false;
     final h264PayloadTypes = <String>[];
+    final vp8PayloadTypes = <String>[];
 
-    // First pass: identify H.264 payload types in SDP
+    // First pass: identify H.264 and VP8 payload types in SDP
     for (final line in lines) {
       final trimmed = line.trim();
-      if (trimmed.startsWith('a=rtpmap:') &&
-          trimmed.toUpperCase().contains('H264/90000')) {
-        final match = RegExp(r'a=rtpmap:(\d+)\s+H264/90000', caseSensitive: false)
-            .firstMatch(trimmed);
-        if (match != null) {
-          h264PayloadTypes.add(match.group(1)!);
+      if (trimmed.startsWith('a=rtpmap:')) {
+        if (trimmed.toUpperCase().contains('H264/90000')) {
+          final match = RegExp(r'a=rtpmap:(\d+)\s+H264/90000', caseSensitive: false)
+              .firstMatch(trimmed);
+          if (match != null) {
+            h264PayloadTypes.add(match.group(1)!);
+          }
+        } else if (trimmed.toUpperCase().contains('VP8/90000')) {
+          final match = RegExp(r'a=rtpmap:(\d+)\s+VP8/90000', caseSensitive: false)
+              .firstMatch(trimmed);
+          if (match != null) {
+            vp8PayloadTypes.add(match.group(1)!);
+          }
         }
       }
     }
@@ -43,15 +52,19 @@ class SdpOptimizer {
       if (line.startsWith('m=video')) {
         inVideoSection = true;
 
-        if (preferH264 && h264PayloadTypes.isNotEmpty) {
-          // Reorder payload types to place H.264 first
+        final targetCodecPts = preferVp8
+            ? vp8PayloadTypes
+            : (preferH264 ? h264PayloadTypes : vp8PayloadTypes);
+
+        if (targetCodecPts.isNotEmpty) {
+          // Reorder payload types to place preferred codec first
           final parts = line.split(' ');
           if (parts.length > 3) {
             final header = parts.sublist(0, 3);
             final currentPts = parts.sublist(3);
             final remainingPts =
-                currentPts.where((pt) => !h264PayloadTypes.contains(pt)).toList();
-            line = '${header.join(" ")} ${h264PayloadTypes.join(" ")} ${remainingPts.join(" ")}';
+                currentPts.where((pt) => !targetCodecPts.contains(pt)).toList();
+            line = '${header.join(" ")} ${targetCodecPts.join(" ")} ${remainingPts.join(" ")}';
           }
         }
 

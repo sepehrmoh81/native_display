@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'sdp_optimizer.dart';
@@ -97,7 +98,10 @@ class WebRTCManager extends ChangeNotifier {
 
   // --- SENDER IMPLEMENTATION ---
 
-  Future<void> startSenderSession({DesktopCapturerSource? source}) async {
+  Future<void> startSenderSession({
+    DesktopCapturerSource? source,
+    bool preferVp8 = false,
+  }) async {
     _status = ConnectionStateStatus.connecting;
     notifyListeners();
 
@@ -168,13 +172,15 @@ class WebRTCManager extends ChangeNotifier {
       }
 
       // 4. Create, optimize with dynamic SDP munging, and send Offer
-      debugPrint('[WebRTCManager] Creating Offer...');
+      debugPrint('[WebRTCManager] Creating Offer (preferVp8: $preferVp8)...');
       var offer = await _peerConnection!.createOffer({});
+      final useVp8 = preferVp8 || !_qualityConfig.enableHardwareAcceleration;
       final optimizedSdp = SdpOptimizer.optimize(
         offer.sdp ?? '',
         bitrateKbps: _qualityConfig.effectiveBitrateKbps,
         fps: _qualityConfig.effectiveFps,
-        preferH264: _qualityConfig.enableHardwareAcceleration,
+        preferH264: !useVp8,
+        preferVp8: useVp8,
       );
       offer = RTCSessionDescription(optimizedSdp, offer.type);
 
@@ -306,12 +312,15 @@ class WebRTCManager extends ChangeNotifier {
           if (_peerConnection == null) {
             await prepareReceiverSession();
           }
+          final isWindowsReceiver = !kIsWeb && Platform.isWindows;
+          final useVp8 = isWindowsReceiver || !_qualityConfig.enableHardwareAcceleration;
           final rawOfferSdp = message.data['sdp'] as String?;
           final optimizedOfferSdp = SdpOptimizer.optimize(
             rawOfferSdp ?? '',
             bitrateKbps: _qualityConfig.effectiveBitrateKbps,
             fps: _qualityConfig.effectiveFps,
-            preferH264: _qualityConfig.enableHardwareAcceleration,
+            preferH264: !useVp8,
+            preferVp8: useVp8,
           );
           final sdp = RTCSessionDescription(
             optimizedOfferSdp,
@@ -319,7 +328,7 @@ class WebRTCManager extends ChangeNotifier {
           );
           await _peerConnection!.setRemoteDescription(sdp);
           _isRemoteDescriptionSet = true;
-          debugPrint('[WebRTCManager] Set remote description (Offer)');
+          debugPrint('[WebRTCManager] Set remote description (Offer, useVp8: $useVp8)');
           await _drainRemoteCandidatesQueue();
 
           var answer = await _peerConnection!.createAnswer({});
@@ -327,11 +336,12 @@ class WebRTCManager extends ChangeNotifier {
             answer.sdp ?? '',
             bitrateKbps: _qualityConfig.effectiveBitrateKbps,
             fps: _qualityConfig.effectiveFps,
-            preferH264: _qualityConfig.enableHardwareAcceleration,
+            preferH264: !useVp8,
+            preferVp8: useVp8,
           );
           answer = RTCSessionDescription(optimizedAnswerSdp, answer.type);
           await _peerConnection!.setLocalDescription(answer);
-          debugPrint('[WebRTCManager] Set local description (Answer with optimized SDP)');
+          debugPrint('[WebRTCManager] Set local description (Answer with optimized SDP, useVp8: $useVp8)');
 
           onSignalingMessageReady?.call(SignalingMessage(
             type: SignalingType.answer,
@@ -343,12 +353,15 @@ class WebRTCManager extends ChangeNotifier {
         case SignalingType.answer:
           debugPrint('[WebRTCManager] Processing Answer...');
           if (_peerConnection != null) {
+            final isWindows = !kIsWeb && Platform.isWindows;
+            final useVp8 = isWindows || !_qualityConfig.enableHardwareAcceleration;
             final rawAnswerSdp = message.data['sdp'] as String?;
             final optimizedAnswerSdp = SdpOptimizer.optimize(
               rawAnswerSdp ?? '',
               bitrateKbps: _qualityConfig.effectiveBitrateKbps,
               fps: _qualityConfig.effectiveFps,
-              preferH264: _qualityConfig.enableHardwareAcceleration,
+              preferH264: !useVp8,
+              preferVp8: useVp8,
             );
             final sdp = RTCSessionDescription(
               optimizedAnswerSdp,
@@ -356,7 +369,7 @@ class WebRTCManager extends ChangeNotifier {
             );
             await _peerConnection!.setRemoteDescription(sdp);
             _isRemoteDescriptionSet = true;
-            debugPrint('[WebRTCManager] Set remote description (Answer) successfully!');
+            debugPrint('[WebRTCManager] Set remote description (Answer, useVp8: $useVp8) successfully!');
             await _drainRemoteCandidatesQueue();
             await _applySenderParameters();
           } else {

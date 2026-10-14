@@ -166,7 +166,7 @@ class ReceiverController extends ChangeNotifier with WindowListener {
 
     // Start hosting and broadcasting (Windows starts immediately; macOS starts when user selects receiver tab)
     if (autoStartOnWindows && Platform.isWindows) {
-      await startListening();
+      unawaited(startListening());
     }
   }
 
@@ -190,10 +190,7 @@ class ReceiverController extends ChangeNotifier with WindowListener {
       // 2. Start Signaling WebSocket server
       await signalingServer.start();
 
-      // 3. Prepare WebRTC receiver session
-      await webrtcManager.prepareReceiverSession();
-
-      // 4. Broadcast service via mDNS and UDP with true monitor capabilities
+      // 3. Broadcast service via mDNS and UDP with true monitor capabilities
       await discoveryService.startBroadcasting(
         deviceName: _deviceName,
         port: AppConstants.defaultSignalingPort,
