@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:window_manager/window_manager.dart';
+
 import 'core/network/discovery_service.dart';
 import 'core/theme/apple_theme.dart';
 import 'core/theme/liquid_glass.dart';
@@ -21,13 +24,11 @@ void main() async {
   // Desktop window customization
   if (Platform.isMacOS || Platform.isWindows) {
     await windowManager.ensureInitialized();
-    final windowOptions = WindowOptions(
-      size: const Size(1080, 720),
-      minimumSize: const Size(800, 560),
+    const windowOptions = WindowOptions(
+      size: Size(1080, 720),
+      minimumSize: Size(800, 560),
       center: true,
-      backgroundColor: Platform.isWindows
-          ? const Color(0xFF1C1C1E)
-          : CupertinoColors.transparent,
+      backgroundColor: CupertinoColors.transparent,
       skipTaskbar: false,
       title: 'Native Display',
     );
@@ -80,12 +81,14 @@ void main() async {
     );
   }
 
-  runApp(NativeDisplayApp(
-    discoveryService: discoveryService,
-    senderController: senderController,
-    receiverController: receiverController,
-    settingsController: settingsController,
-  ));
+  runApp(
+    NativeDisplayApp(
+      discoveryService: discoveryService,
+      senderController: senderController,
+      receiverController: receiverController,
+      settingsController: settingsController,
+    ),
+  );
 }
 
 class NativeDisplayApp extends StatelessWidget {
@@ -201,13 +204,14 @@ class _MainShellViewState extends State<MainShellView> {
     if (item == NavigationItem.sender && !_isMac) return;
     if (_selectedNav == item) return;
     setState(() => _selectedNav = item);
-    if (!Platform.isWindows) {
+    if (_isMac) {
       if (item == NavigationItem.receiver) {
-        if (widget.receiverController.isDiscoveryEnabled) {
-          widget.receiverController.startListening();
+        if (widget.receiverController.isDiscoveryEnabled &&
+            widget.receiverController.status == ReceiverStatus.idle) {
+          unawaited(widget.receiverController.startListening());
         }
-      } else {
-        widget.receiverController.stopListening();
+      } else if (item == NavigationItem.sender) {
+        unawaited(widget.receiverController.stopListening());
       }
     }
   }
@@ -232,7 +236,9 @@ class _MainShellViewState extends State<MainShellView> {
         if (isCompact) {
           // Compact / Mobile Layout: Cupertino Tab Bar
           final navItems = NavigationItem.values
-              .where((item) => item != NavigationItem.sender || Platform.isMacOS)
+              .where(
+                (item) => item != NavigationItem.sender || Platform.isMacOS,
+              )
               .toList();
           final currentIndex = navItems.indexOf(_selectedNav);
 
@@ -241,17 +247,17 @@ class _MainShellViewState extends State<MainShellView> {
               currentIndex: currentIndex >= 0 ? currentIndex : 0,
               onTap: (index) => _onSelectNav(navItems[index]),
               items: navItems
-                  .map((item) => BottomNavigationBarItem(
-                        icon: Icon(item.icon),
-                        label: item.getTitle(l10n),
-                      ))
+                  .map(
+                    (item) => BottomNavigationBarItem(
+                      icon: Icon(item.icon),
+                      label: item.getTitle(l10n),
+                    ),
+                  )
                   .toList(),
             ),
             tabBuilder: (context, index) {
               return CupertinoPageScaffold(
-                child: SafeArea(
-                  child: _buildContent(navItems[index]),
-                ),
+                child: SafeArea(child: _buildContent(navItems[index])),
               );
             },
           );
@@ -287,7 +293,10 @@ class _MainShellViewState extends State<MainShellView> {
                             horizontal: AppleTheme.spacing12,
                           ),
                           children: NavigationItem.values
-                              .map((item) => _buildSidebarItem(context, item, l10n))
+                              .map(
+                                (item) =>
+                                    _buildSidebarItem(context, item, l10n),
+                              )
                               .toList(),
                         ),
                       ),
@@ -304,9 +313,7 @@ class _MainShellViewState extends State<MainShellView> {
                     AppleTheme.systemBackground,
                     context,
                   ),
-                  child: SafeArea(
-                    child: _buildContent(_selectedNav),
-                  ),
+                  child: SafeArea(child: _buildContent(_selectedNav)),
                 ),
               ),
             ],
@@ -361,7 +368,9 @@ class _MainShellViewState extends State<MainShellView> {
     final itemWidget = Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: MouseRegion(
-        cursor: isSupported ? SystemMouseCursors.click : SystemMouseCursors.forbidden,
+        cursor: isSupported
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.forbidden,
         child: GestureDetector(
           onTap: isSupported ? () => _onSelectNav(item) : null,
           child: Opacity(
@@ -398,7 +407,9 @@ class _MainShellViewState extends State<MainShellView> {
                       item.getTitle(l10n),
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
                         color: isSelected
                             ? AppleTheme.systemBlue
                             : CupertinoDynamicColor.resolve(
@@ -412,15 +423,18 @@ class _MainShellViewState extends State<MainShellView> {
                   ),
                   if (!isSupported)
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1.5,
+                      ),
                       decoration: BoxDecoration(
                         color: CupertinoDynamicColor.resolve(
                           AppleTheme.tertiarySystemFill,
                           context,
                         ),
-                        borderRadius:
-                            BorderRadius.circular(AppleTheme.radiusSmall),
+                        borderRadius: BorderRadius.circular(
+                          AppleTheme.radiusSmall,
+                        ),
                       ),
                       child: Text(
                         'macOS',
@@ -444,8 +458,10 @@ class _MainShellViewState extends State<MainShellView> {
 
   Widget _buildSidebarFooter(BuildContext context, AppLocalizations l10n) {
     final isConnected =
-        widget.senderController.webrtcManager.status == ConnectionStateStatus.connected ||
-        widget.receiverController.webrtcManager.status == ConnectionStateStatus.connected;
+        widget.senderController.webrtcManager.status ==
+            ConnectionStateStatus.connected ||
+        widget.receiverController.webrtcManager.status ==
+            ConnectionStateStatus.connected;
 
     return Padding(
       padding: const EdgeInsets.all(AppleTheme.spacing16),
@@ -499,25 +515,28 @@ class _MainShellViewState extends State<MainShellView> {
   Widget _buildContent(NavigationItem navItem) {
     return switch (navItem) {
       NavigationItem.sender => SenderView(
-          controller: widget.senderController,
-          onOpenSettings: () => _onSelectNav(NavigationItem.settings),
-          onSwitchToReceiver: () => _onSelectNav(NavigationItem.receiver),
-          isMacOverride: widget.isMacOverride,
-        ),
-      NavigationItem.receiver =>
-        ReceiverView(controller: widget.receiverController),
+        controller: widget.senderController,
+        onOpenSettings: () => _onSelectNav(NavigationItem.settings),
+        onSwitchToReceiver: () => _onSelectNav(NavigationItem.receiver),
+        isMacOverride: widget.isMacOverride,
+      ),
+      NavigationItem.receiver => ReceiverView(
+        controller: widget.receiverController,
+      ),
       NavigationItem.diagnostics => DiagnosticsView(
-          webrtcManager: widget.receiverController.status == ReceiverStatus.connected
-              ? widget.receiverController.webrtcManager
-              : (widget.senderController.status == SenderStatus.streaming ||
-                      widget.senderController.status == SenderStatus.connecting)
+        webrtcManager:
+            widget.receiverController.status == ReceiverStatus.connected
+            ? widget.receiverController.webrtcManager
+            : (widget.senderController.status == SenderStatus.streaming ||
+                  widget.senderController.status == SenderStatus.connecting)
+            ? widget.senderController.webrtcManager
+            : (_isMac
                   ? widget.senderController.webrtcManager
-                  : (_isMac
-                      ? widget.senderController.webrtcManager
-                      : widget.receiverController.webrtcManager),
-        ),
-      NavigationItem.settings =>
-        SettingsView(controller: widget.settingsController),
+                  : widget.receiverController.webrtcManager),
+      ),
+      NavigationItem.settings => SettingsView(
+        controller: widget.settingsController,
+      ),
     };
   }
 }

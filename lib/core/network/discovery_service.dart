@@ -1,14 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:bonsoir/bonsoir.dart';
+
 import '../constants/app_constants.dart';
 import 'models/peer_device.dart';
 
 class DiscoveryService extends ChangeNotifier {
   final List<PeerDevice> _discoveredDevices = [];
-  List<PeerDevice> get discoveredDevices => List.unmodifiable(_discoveredDevices);
+  List<PeerDevice> get discoveredDevices =>
+      List.unmodifiable(_discoveredDevices);
 
   BonsoirBroadcast? _bonsoirBroadcast;
   BonsoirDiscovery? _bonsoirDiscovery;
@@ -67,8 +70,8 @@ class DiscoveryService extends ChangeNotifier {
         },
       );
       _bonsoirBroadcast = BonsoirBroadcast(service: service);
-      await _bonsoirBroadcast?.initialize().timeout(const Duration(seconds: 2));
-      await _bonsoirBroadcast?.start().timeout(const Duration(seconds: 2));
+      await _bonsoirBroadcast?.initialize().timeout(const Duration(seconds: 3));
+      await _bonsoirBroadcast?.start().timeout(const Duration(seconds: 3));
     } catch (e) {
       debugPrint('[DiscoveryService] Bonsoir broadcast warning: $e');
     }
@@ -108,7 +111,12 @@ class DiscoveryService extends ChangeNotifier {
     _udpSocket = null;
 
     try {
-      await _bonsoirBroadcast?.stop();
+      await _bonsoirBroadcast?.stop().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('[DiscoveryService] Bonsoir broadcast stop timed out');
+        },
+      );
     } catch (_) {}
     _bonsoirBroadcast = null;
 
@@ -124,8 +132,12 @@ class DiscoveryService extends ChangeNotifier {
 
     // 1. Bonsoir mDNS discovery
     try {
-      _bonsoirDiscovery = BonsoirDiscovery(type: AppConstants.bonjourServiceType);
-      await _bonsoirDiscovery?.initialize().timeout(const Duration(seconds: 2));
+      _bonsoirDiscovery = BonsoirDiscovery(
+        type: AppConstants.bonjourServiceType,
+      );
+      await _bonsoirDiscovery?.initialize().timeout(
+        const Duration(seconds: 3),
+      );
       _bonsoirDiscovery?.eventStream?.listen((event) async {
         if (event is BonsoirDiscoveryServiceFoundEvent) {
           event.service.resolve(_bonsoirDiscovery!.serviceResolver);
@@ -156,7 +168,8 @@ class DiscoveryService extends ChangeNotifier {
                   type: InternetAddressType.IPv4,
                 );
                 for (final addr in resolved) {
-                  if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
+                  if (addr.type == InternetAddressType.IPv4 &&
+                      !addr.isLoopback) {
                     host = addr.address;
                     break;
                   }
@@ -175,7 +188,9 @@ class DiscoveryService extends ChangeNotifier {
             name: s.name,
             host: host,
             port: s.port,
-            mode: attrs['mode'] == 'receiver' ? AppMode.receiver : AppMode.sender,
+            mode: attrs['mode'] == 'receiver'
+                ? AppMode.receiver
+                : AppMode.sender,
             platform: DevicePlatform.fromString(attrs['platform'] ?? 'unknown'),
             screenWidth: int.tryParse(attrs['w'] ?? '1920') ?? 1920,
             screenHeight: int.tryParse(attrs['h'] ?? '1080') ?? 1080,
@@ -184,7 +199,9 @@ class DiscoveryService extends ChangeNotifier {
           _addOrUpdateDevice(device);
         }
       });
-      await _bonsoirDiscovery?.start().timeout(const Duration(seconds: 2));
+      await _bonsoirDiscovery?.start().timeout(
+        const Duration(seconds: 3),
+      );
     } catch (e) {
       debugPrint('[DiscoveryService] Bonsoir discovery warning: $e');
     }
@@ -258,7 +275,12 @@ class DiscoveryService extends ChangeNotifier {
     _cleanupTimer?.cancel();
     _cleanupTimer = null;
     try {
-      await _bonsoirDiscovery?.stop();
+      await _bonsoirDiscovery?.stop().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('[DiscoveryService] Bonsoir discovery stop timed out');
+        },
+      );
     } catch (_) {}
     _bonsoirDiscovery = null;
     _isScanning = false;
@@ -273,33 +295,36 @@ class DiscoveryService extends ChangeNotifier {
       );
 
       // Prioritize physical Wi-Fi and Ethernet adapters over virtual adapters (WSL, Hyper-V, Docker, Hotspot)
-      final sorted = List<NetworkInterface>.from(interfaces)..sort((a, b) {
-        final aName = a.name.toLowerCase();
-        final bName = b.name.toLowerCase();
-        final aIsVirtual = aName.contains('vethernet') ||
-            aName.contains('wsl') ||
-            aName.contains('virtual') ||
-            aName.contains('docker') ||
-            aName.contains('utun') ||
-            aName.contains('vmware') ||
-            aName.contains('hyper-v') ||
-            aName.contains('loopback') ||
-            aName.contains('direct') ||
-            aName.contains('hotspot');
-        final bIsVirtual = bName.contains('vethernet') ||
-            bName.contains('wsl') ||
-            bName.contains('virtual') ||
-            bName.contains('docker') ||
-            bName.contains('utun') ||
-            bName.contains('vmware') ||
-            bName.contains('hyper-v') ||
-            bName.contains('loopback') ||
-            bName.contains('direct') ||
-            bName.contains('hotspot');
-        if (aIsVirtual && !bIsVirtual) return 1;
-        if (!aIsVirtual && bIsVirtual) return -1;
-        return 0;
-      });
+      final sorted = List<NetworkInterface>.from(interfaces)
+        ..sort((a, b) {
+          final aName = a.name.toLowerCase();
+          final bName = b.name.toLowerCase();
+          final aIsVirtual =
+              aName.contains('vethernet') ||
+              aName.contains('wsl') ||
+              aName.contains('virtual') ||
+              aName.contains('docker') ||
+              aName.contains('utun') ||
+              aName.contains('vmware') ||
+              aName.contains('hyper-v') ||
+              aName.contains('loopback') ||
+              aName.contains('direct') ||
+              aName.contains('hotspot');
+          final bIsVirtual =
+              bName.contains('vethernet') ||
+              bName.contains('wsl') ||
+              bName.contains('virtual') ||
+              bName.contains('docker') ||
+              bName.contains('utun') ||
+              bName.contains('vmware') ||
+              bName.contains('hyper-v') ||
+              bName.contains('loopback') ||
+              bName.contains('direct') ||
+              bName.contains('hotspot');
+          if (aIsVirtual && !bIsVirtual) return 1;
+          if (!aIsVirtual && bIsVirtual) return -1;
+          return 0;
+        });
 
       // Pass 1: find physical routable LAN address, ignoring Windows hotspot/ICS (192.168.137.x) and APIPA (169.254.x.x)
       for (final iface in sorted) {

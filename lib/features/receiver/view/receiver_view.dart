@@ -77,10 +77,6 @@ class _ReceiverViewState extends State<ReceiverView> {
         if (isConnected) {
           return _buildActiveStreamingView(context, l10n);
         } else {
-          _hudHideTimer?.cancel();
-          _cursorHideTimer?.cancel();
-          _hudVisible = false;
-          _cursorVisible = true;
           return _buildStandbyView(context, l10n);
         }
       },
@@ -126,14 +122,10 @@ class _ReceiverViewState extends State<ReceiverView> {
                 children: [
                   _buildStatusBadge(context, l10n),
                   const SizedBox(width: AppleTheme.spacing12),
-                  Semantics(
-                    label: l10n.discoveryToggleLabel,
-                    toggled: isDiscoveryOn,
-                    child: CupertinoSwitch(
-                      value: isDiscoveryOn,
-                      onChanged: (val) =>
-                          widget.controller.setDiscoveryEnabled(val),
-                    ),
+                  CupertinoSwitch(
+                    value: isDiscoveryOn,
+                    onChanged: (val) =>
+                        widget.controller.setDiscoveryEnabled(val),
                   ),
                 ],
               ),
@@ -551,7 +543,9 @@ class _ReceiverViewState extends State<ReceiverView> {
               child: MouseRegion(
                 opaque: false,
                 onEnter: (_) => _revealHud(),
-                onHover: (_) => _revealHud(),
+                onHover: (_) {
+                  if (!_hudVisible) _revealHud();
+                },
               ),
             ),
 
@@ -630,79 +624,75 @@ class _ReceiverViewState extends State<ReceiverView> {
           const SizedBox(width: AppleTheme.spacing12),
 
           // Windowed / Fullscreen Button
-          Semantics(
-            label: widget.controller.isFullscreen
-                ? l10n.windowedMode
-                : l10n.fullscreenMode,
-            button: true,
-            child: CupertinoButton(
-              minimumSize: const Size(28, 28),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: AppleTheme.spacing4,
-              ),
-              color: const Color(0x26FFFFFF),
-              borderRadius: BorderRadius.circular(AppleTheme.radiusPill),
-              onPressed: widget.controller.toggleFullscreen,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    widget.controller.isFullscreen
-                        ? CupertinoIcons.fullscreen_exit
-                        : CupertinoIcons.fullscreen,
-                    size: 13,
+          CupertinoButton(
+            minimumSize: const Size(28, 28),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: AppleTheme.spacing4,
+            ),
+            color: const Color(0x26FFFFFF),
+            borderRadius: BorderRadius.circular(AppleTheme.radiusPill),
+            onPressed: widget.controller.toggleFullscreen,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  widget.controller.isFullscreen
+                      ? CupertinoIcons.fullscreen_exit
+                      : CupertinoIcons.fullscreen,
+                  size: 13,
+                  color: CupertinoColors.white,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  widget.controller.isFullscreen
+                      ? l10n.windowedMode
+                      : l10n.fullscreenMode,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                     color: CupertinoColors.white,
                   ),
-                  const SizedBox(width: 5),
-                  Text(
-                    widget.controller.isFullscreen
-                        ? l10n.windowedMode
-                        : l10n.fullscreenMode,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: CupertinoColors.white,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: AppleTheme.spacing8),
 
           // Disconnect Button
-          Semantics(
-            label: l10n.disconnect,
-            button: true,
-            child: CupertinoButton(
-              minimumSize: const Size(28, 28),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: AppleTheme.spacing4,
-              ),
-              color: CupertinoColors.destructiveRed.withValues(alpha: 0.8),
-              borderRadius: BorderRadius.circular(AppleTheme.radiusPill),
-              onPressed: widget.controller.disconnectSender,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    CupertinoIcons.xmark,
-                    size: 13,
+          CupertinoButton(
+            minimumSize: const Size(28, 28),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: AppleTheme.spacing4,
+            ),
+            color: CupertinoColors.destructiveRed.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(AppleTheme.radiusPill),
+            onPressed: () {
+              _hudHideTimer?.cancel();
+              _cursorHideTimer?.cancel();
+              _hudVisible = false;
+              _cursorVisible = true;
+              widget.controller.disconnectSender();
+            },
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  CupertinoIcons.xmark,
+                  size: 13,
+                  color: CupertinoColors.white,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  l10n.disconnect,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                     color: CupertinoColors.white,
                   ),
-                  const SizedBox(width: 5),
-                  Text(
-                    l10n.disconnect,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: CupertinoColors.white,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],

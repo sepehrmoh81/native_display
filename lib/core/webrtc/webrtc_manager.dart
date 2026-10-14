@@ -1,18 +1,13 @@
 import 'dart:async';
-import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+
 import 'sdp_optimizer.dart';
 import 'stream_quality.dart';
 import '../network/models/signaling_message.dart';
 
-enum ConnectionStateStatus {
-  idle,
-  connecting,
-  connected,
-  disconnected,
-  failed,
-}
+enum ConnectionStateStatus { idle, connecting, connected, disconnected, failed }
 
 class WebRTCManager extends ChangeNotifier {
   RTCPeerConnection? _peerConnection;
@@ -98,10 +93,7 @@ class WebRTCManager extends ChangeNotifier {
 
   // --- SENDER IMPLEMENTATION ---
 
-  Future<void> startSenderSession({
-    DesktopCapturerSource? source,
-    bool preferVp8 = false,
-  }) async {
+  Future<void> startSenderSession({DesktopCapturerSource? source}) async {
     _status = ConnectionStateStatus.connecting;
     notifyListeners();
 
@@ -138,23 +130,32 @@ class WebRTCManager extends ChangeNotifier {
         },
       };
 
-      _localStream = await navigator.mediaDevices.getDisplayMedia(mediaConstraints);
+      _localStream = await navigator.mediaDevices.getDisplayMedia(
+        mediaConstraints,
+      );
       localRenderer.srcObject = _localStream;
 
       // 2. Initialize PeerConnection
       _peerConnection = await createPeerConnection(_buildConfiguration());
 
       _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
-        if (candidate.candidate == null || candidate.candidate!.trim().isEmpty) {
-          debugPrint('[WebRTCManager] Local candidate gathering complete (null/empty)');
+        if (candidate.candidate == null ||
+            candidate.candidate!.trim().isEmpty) {
+          debugPrint(
+            '[WebRTCManager] Local candidate gathering complete (null/empty)',
+          );
           return;
         }
-        debugPrint('[WebRTCManager] Generated local ICE candidate: ${candidate.candidate}');
-        onSignalingMessageReady?.call(SignalingMessage(
-          type: SignalingType.candidate,
-          data: candidate.toMap(),
-          senderId: 'sender',
-        ));
+        debugPrint(
+          '[WebRTCManager] Generated local ICE candidate: ${candidate.candidate}',
+        );
+        onSignalingMessageReady?.call(
+          SignalingMessage(
+            type: SignalingType.candidate,
+            data: candidate.toMap(),
+            senderId: 'sender',
+          ),
+        );
       };
 
       _peerConnection!.onConnectionState = (RTCPeerConnectionState state) {
@@ -167,32 +168,36 @@ class WebRTCManager extends ChangeNotifier {
 
       // 3. Add video track to PeerConnection
       for (final track in _localStream!.getTracks()) {
-        debugPrint('[WebRTCManager] Adding track ${track.kind}:${track.id} to PeerConnection');
+        debugPrint(
+          '[WebRTCManager] Adding track ${track.kind}:${track.id} to PeerConnection',
+        );
         await _peerConnection!.addTrack(track, _localStream!);
       }
 
       // 4. Create, optimize with dynamic SDP munging, and send Offer
-      debugPrint('[WebRTCManager] Creating Offer (preferVp8: $preferVp8)...');
+      debugPrint('[WebRTCManager] Creating Offer...');
       var offer = await _peerConnection!.createOffer({});
-      final useVp8 = preferVp8 || !_qualityConfig.enableHardwareAcceleration;
       final optimizedSdp = SdpOptimizer.optimize(
         offer.sdp ?? '',
         bitrateKbps: _qualityConfig.effectiveBitrateKbps,
         fps: _qualityConfig.effectiveFps,
-        preferH264: !useVp8,
-        preferVp8: useVp8,
+        preferH264: _qualityConfig.enableHardwareAcceleration,
       );
       offer = RTCSessionDescription(optimizedSdp, offer.type);
 
-      debugPrint('[WebRTCManager] Setting local description (Offer with optimized SDP)...');
+      debugPrint(
+        '[WebRTCManager] Setting local description (Offer with optimized SDP)...',
+      );
       await _peerConnection!.setLocalDescription(offer);
       await _applySenderParameters();
 
-      onSignalingMessageReady?.call(SignalingMessage(
-        type: SignalingType.offer,
-        data: offer.toMap(),
-        senderId: 'sender',
-      ));
+      onSignalingMessageReady?.call(
+        SignalingMessage(
+          type: SignalingType.offer,
+          data: offer.toMap(),
+          senderId: 'sender',
+        ),
+      );
 
       _startStatsMonitoring();
     } catch (e) {
@@ -214,16 +219,23 @@ class WebRTCManager extends ChangeNotifier {
       _peerConnection = await createPeerConnection(_buildConfiguration());
 
       _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
-        if (candidate.candidate == null || candidate.candidate!.trim().isEmpty) {
-          debugPrint('[WebRTCManager] Receiver candidate gathering complete (null/empty)');
+        if (candidate.candidate == null ||
+            candidate.candidate!.trim().isEmpty) {
+          debugPrint(
+            '[WebRTCManager] Receiver candidate gathering complete (null/empty)',
+          );
           return;
         }
-        debugPrint('[WebRTCManager] Generated local ICE candidate (receiver): ${candidate.candidate}');
-        onSignalingMessageReady?.call(SignalingMessage(
-          type: SignalingType.candidate,
-          data: candidate.toMap(),
-          senderId: 'receiver',
-        ));
+        debugPrint(
+          '[WebRTCManager] Generated local ICE candidate (receiver): ${candidate.candidate}',
+        );
+        onSignalingMessageReady?.call(
+          SignalingMessage(
+            type: SignalingType.candidate,
+            data: candidate.toMap(),
+            senderId: 'receiver',
+          ),
+        );
       };
 
       _peerConnection!.onConnectionState = (RTCPeerConnectionState state) {
@@ -235,13 +247,18 @@ class WebRTCManager extends ChangeNotifier {
       };
 
       _peerConnection!.onTrack = (RTCTrackEvent event) {
-        debugPrint('[WebRTCManager] onTrack: streams=${event.streams.length}, track=${event.track.id}');
+        debugPrint(
+          '[WebRTCManager] onTrack: streams=${event.streams.length}, track=${event.track.id}',
+        );
         if (event.streams.isNotEmpty) {
           _remoteStream = event.streams[0];
           remoteRenderer.srcObject = _remoteStream;
-          if (_iceConnectionState == RTCIceConnectionState.RTCIceConnectionStateConnected ||
-              _iceConnectionState == RTCIceConnectionState.RTCIceConnectionStateCompleted ||
-              _peerConnectionState == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
+          if (_iceConnectionState ==
+                  RTCIceConnectionState.RTCIceConnectionStateConnected ||
+              _iceConnectionState ==
+                  RTCIceConnectionState.RTCIceConnectionStateCompleted ||
+              _peerConnectionState ==
+                  RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
             _status = ConnectionStateStatus.connected;
           }
           notifyListeners();
@@ -268,8 +285,11 @@ class WebRTCManager extends ChangeNotifier {
           params.degradationPreference =
               RTCDegradationPreference.MAINTAIN_FRAMERATE;
           final targetBitrateBps = _qualityConfig.effectiveBitrateKbps * 1000;
-          final minBitrateBps = (_qualityConfig.effectiveBitrateKbps * 1000 ~/ 3)
-              .clamp(2000000, targetBitrateBps);
+          final minBitrateBps =
+              (_qualityConfig.effectiveBitrateKbps * 1000 ~/ 3).clamp(
+                2000000,
+                targetBitrateBps,
+              );
 
           if (params.encodings != null && params.encodings!.isNotEmpty) {
             for (final encoding in params.encodings!) {
@@ -293,18 +313,23 @@ class WebRTCManager extends ChangeNotifier {
           }
           await sender.setParameters(params);
           debugPrint(
-              '[WebRTCManager] Applied video sender parameters: maxBitrate=${targetBitrateBps}bps, minBitrate=${minBitrateBps}bps, fps=${_qualityConfig.effectiveFps}, degradation=maintainFramerate');
+            '[WebRTCManager] Applied video sender parameters: maxBitrate=${targetBitrateBps}bps, minBitrate=${minBitrateBps}bps, fps=${_qualityConfig.effectiveFps}, degradation=maintainFramerate',
+          );
         }
       }
     } catch (e) {
-      debugPrint('[WebRTCManager] Notice: Could not apply sender parameters: $e');
+      debugPrint(
+        '[WebRTCManager] Notice: Could not apply sender parameters: $e',
+      );
     }
   }
 
   // --- SIGNALING MESSAGE DISPATCH ---
 
   Future<void> handleIncomingSignaling(SignalingMessage message) async {
-    debugPrint('[WebRTCManager] handleIncomingSignaling: ${message.type.name} from ${message.senderId}');
+    debugPrint(
+      '[WebRTCManager] handleIncomingSignaling: ${message.type.name} from ${message.senderId}',
+    );
     try {
       switch (message.type) {
         case SignalingType.offer:
@@ -312,15 +337,12 @@ class WebRTCManager extends ChangeNotifier {
           if (_peerConnection == null) {
             await prepareReceiverSession();
           }
-          final isWindowsReceiver = !kIsWeb && Platform.isWindows;
-          final useVp8 = isWindowsReceiver || !_qualityConfig.enableHardwareAcceleration;
           final rawOfferSdp = message.data['sdp'] as String?;
           final optimizedOfferSdp = SdpOptimizer.optimize(
             rawOfferSdp ?? '',
             bitrateKbps: _qualityConfig.effectiveBitrateKbps,
             fps: _qualityConfig.effectiveFps,
-            preferH264: !useVp8,
-            preferVp8: useVp8,
+            preferH264: _qualityConfig.enableHardwareAcceleration,
           );
           final sdp = RTCSessionDescription(
             optimizedOfferSdp,
@@ -328,7 +350,7 @@ class WebRTCManager extends ChangeNotifier {
           );
           await _peerConnection!.setRemoteDescription(sdp);
           _isRemoteDescriptionSet = true;
-          debugPrint('[WebRTCManager] Set remote description (Offer, useVp8: $useVp8)');
+          debugPrint('[WebRTCManager] Set remote description (Offer)');
           await _drainRemoteCandidatesQueue();
 
           var answer = await _peerConnection!.createAnswer({});
@@ -336,32 +358,32 @@ class WebRTCManager extends ChangeNotifier {
             answer.sdp ?? '',
             bitrateKbps: _qualityConfig.effectiveBitrateKbps,
             fps: _qualityConfig.effectiveFps,
-            preferH264: !useVp8,
-            preferVp8: useVp8,
+            preferH264: _qualityConfig.enableHardwareAcceleration,
           );
           answer = RTCSessionDescription(optimizedAnswerSdp, answer.type);
           await _peerConnection!.setLocalDescription(answer);
-          debugPrint('[WebRTCManager] Set local description (Answer with optimized SDP, useVp8: $useVp8)');
+          debugPrint(
+            '[WebRTCManager] Set local description (Answer with optimized SDP)',
+          );
 
-          onSignalingMessageReady?.call(SignalingMessage(
-            type: SignalingType.answer,
-            data: answer.toMap(),
-            senderId: 'receiver',
-          ));
+          onSignalingMessageReady?.call(
+            SignalingMessage(
+              type: SignalingType.answer,
+              data: answer.toMap(),
+              senderId: 'receiver',
+            ),
+          );
           break;
 
         case SignalingType.answer:
           debugPrint('[WebRTCManager] Processing Answer...');
           if (_peerConnection != null) {
-            final isWindows = !kIsWeb && Platform.isWindows;
-            final useVp8 = isWindows || !_qualityConfig.enableHardwareAcceleration;
             final rawAnswerSdp = message.data['sdp'] as String?;
             final optimizedAnswerSdp = SdpOptimizer.optimize(
               rawAnswerSdp ?? '',
               bitrateKbps: _qualityConfig.effectiveBitrateKbps,
               fps: _qualityConfig.effectiveFps,
-              preferH264: !useVp8,
-              preferVp8: useVp8,
+              preferH264: _qualityConfig.enableHardwareAcceleration,
             );
             final sdp = RTCSessionDescription(
               optimizedAnswerSdp,
@@ -369,22 +391,29 @@ class WebRTCManager extends ChangeNotifier {
             );
             await _peerConnection!.setRemoteDescription(sdp);
             _isRemoteDescriptionSet = true;
-            debugPrint('[WebRTCManager] Set remote description (Answer, useVp8: $useVp8) successfully!');
+            debugPrint(
+              '[WebRTCManager] Set remote description (Answer) successfully!',
+            );
             await _drainRemoteCandidatesQueue();
             await _applySenderParameters();
           } else {
-            debugPrint('[WebRTCManager] Warning: Received Answer but _peerConnection is null');
+            debugPrint(
+              '[WebRTCManager] Warning: Received Answer but _peerConnection is null',
+            );
           }
           break;
 
         case SignalingType.candidate:
           final candidateStr = message.data['candidate'] as String?;
           if (candidateStr == null || candidateStr.trim().isEmpty) {
-            debugPrint('[WebRTCManager] Received end-of-candidates (null/empty candidate). Skipping.');
+            debugPrint(
+              '[WebRTCManager] Received end-of-candidates (null/empty candidate). Skipping.',
+            );
             break;
           }
           final sdpMid = message.data['sdpMid'] as String?;
-          final sdpMLineIndex = (message.data['sdpMLineIndex'] as num?)?.toInt();
+          final sdpMLineIndex = (message.data['sdpMLineIndex'] as num?)
+              ?.toInt();
 
           final candidate = RTCIceCandidate(
             candidateStr,
@@ -395,9 +424,13 @@ class WebRTCManager extends ChangeNotifier {
           if (_peerConnection != null) {
             if (_isRemoteDescriptionSet) {
               await _peerConnection!.addCandidate(candidate);
-              debugPrint('[WebRTCManager] Added remote ICE candidate: $candidateStr');
+              debugPrint(
+                '[WebRTCManager] Added remote ICE candidate: $candidateStr',
+              );
             } else {
-              debugPrint('[WebRTCManager] Queued remote ICE candidate: $candidateStr');
+              debugPrint(
+                '[WebRTCManager] Queued remote ICE candidate: $candidateStr',
+              );
               _remoteCandidatesQueue.add(candidate);
             }
           }
@@ -412,12 +445,16 @@ class WebRTCManager extends ChangeNotifier {
           break;
       }
     } catch (e, stack) {
-      debugPrint('[WebRTCManager] Error in handleIncomingSignaling (${message.type.name}): $e\n$stack');
+      debugPrint(
+        '[WebRTCManager] Error in handleIncomingSignaling (${message.type.name}): $e\n$stack',
+      );
     }
   }
 
   Future<void> _drainRemoteCandidatesQueue() async {
-    debugPrint('[WebRTCManager] Draining ${_remoteCandidatesQueue.length} queued remote candidates...');
+    debugPrint(
+      '[WebRTCManager] Draining ${_remoteCandidatesQueue.length} queued remote candidates...',
+    );
     for (final candidate in _remoteCandidatesQueue) {
       try {
         await _peerConnection?.addCandidate(candidate);
@@ -488,7 +525,8 @@ class WebRTCManager extends ChangeNotifier {
     _lastStatsTimestamp = null;
 
     _statsTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
-      if (_peerConnection != null && _status == ConnectionStateStatus.connected) {
+      if (_peerConnection != null &&
+          _status == ConnectionStateStatus.connected) {
         try {
           final now = DateTime.now();
           final stats = await _peerConnection!.getStats();
@@ -507,39 +545,53 @@ class WebRTCManager extends ChangeNotifier {
             if (report.type == 'outbound-rtp') {
               hasOutbound = true;
               if (report.values['framesPerSecond'] != null) {
-                currentFps = (report.values['framesPerSecond'] as num).toDouble();
+                currentFps = (report.values['framesPerSecond'] as num)
+                    .toDouble();
               }
               if (report.values['bytesSent'] != null) {
                 currentBytesSent += (report.values['bytesSent'] as num).toInt();
               }
               if (report.values['roundTripTime'] != null) {
-                latency = ((report.values['roundTripTime'] as num).toDouble()) * 1000.0;
+                latency =
+                    ((report.values['roundTripTime'] as num).toDouble()) *
+                    1000.0;
               }
             } else if (report.type == 'inbound-rtp') {
               hasInbound = true;
               if (report.values['framesPerSecond'] != null) {
-                currentFps = (report.values['framesPerSecond'] as num).toDouble();
+                currentFps = (report.values['framesPerSecond'] as num)
+                    .toDouble();
               }
               if (report.values['bytesReceived'] != null) {
-                currentBytesReceived += (report.values['bytesReceived'] as num).toInt();
+                currentBytesReceived += (report.values['bytesReceived'] as num)
+                    .toInt();
               }
               if (report.values['roundTripTime'] != null) {
-                latency = ((report.values['roundTripTime'] as num).toDouble()) * 1000.0;
+                latency =
+                    ((report.values['roundTripTime'] as num).toDouble()) *
+                    1000.0;
               }
               if (report.values['packetsLost'] != null) {
                 lostPackets = (report.values['packetsLost'] as num).toInt();
               }
-            } else if (report.type == 'candidate-pair' || report.type == 'googCandidatePair') {
+            } else if (report.type == 'candidate-pair' ||
+                report.type == 'googCandidatePair') {
               if (report.values['currentRoundTripTime'] != null) {
-                latency = ((report.values['currentRoundTripTime'] as num).toDouble()) * 1000.0;
+                latency =
+                    ((report.values['currentRoundTripTime'] as num)
+                        .toDouble()) *
+                    1000.0;
               } else if (report.values['roundTripTime'] != null) {
-                latency = ((report.values['roundTripTime'] as num).toDouble()) * 1000.0;
+                latency =
+                    ((report.values['roundTripTime'] as num).toDouble()) *
+                    1000.0;
               }
               if (!hasOutbound && report.values['bytesSent'] != null) {
                 currentBytesSent = (report.values['bytesSent'] as num).toInt();
               }
               if (!hasInbound && report.values['bytesReceived'] != null) {
-                currentBytesReceived = (report.values['bytesReceived'] as num).toInt();
+                currentBytesReceived = (report.values['bytesReceived'] as num)
+                    .toInt();
               }
             } else if (report.type == 'codec') {
               final mime = report.values['mimeType']?.toString() ?? '';
@@ -558,7 +610,8 @@ class WebRTCManager extends ChangeNotifier {
           // Calculate actual Mbps throughput
           double calculatedBitrateMbps = 0.0;
           if (_lastStatsTimestamp != null) {
-            final seconds = now.difference(_lastStatsTimestamp!).inMilliseconds / 1000.0;
+            final seconds =
+                now.difference(_lastStatsTimestamp!).inMilliseconds / 1000.0;
             if (seconds > 0) {
               if (hasOutbound && _lastBytesSent != null) {
                 final delta = currentBytesSent - _lastBytesSent!;
@@ -574,8 +627,12 @@ class WebRTCManager extends ChangeNotifier {
             }
           }
 
-          if (currentBytesSent > 0) _lastBytesSent = currentBytesSent;
-          if (currentBytesReceived > 0) _lastBytesReceived = currentBytesReceived;
+          if (currentBytesSent > 0) {
+            _lastBytesSent = currentBytesSent;
+          }
+          if (currentBytesReceived > 0) {
+            _lastBytesReceived = currentBytesReceived;
+          }
           _lastStatsTimestamp = now;
 
           // If currentFps is 0 but stream is connected, fallback to previous or target
@@ -624,8 +681,12 @@ class WebRTCManager extends ChangeNotifier {
       _remoteStream = null;
     }
 
-    localRenderer.srcObject = null;
-    remoteRenderer.srcObject = null;
+    try {
+      localRenderer.srcObject = null;
+    } catch (_) {}
+    try {
+      remoteRenderer.srcObject = null;
+    } catch (_) {}
 
     await _peerConnection?.close();
     _peerConnection = null;

@@ -72,7 +72,12 @@ class SignalingServer {
     });
 
     try {
-      _server = await shelf_io.serve(handler, InternetAddress.anyIPv4, port);
+      _server = await shelf_io.serve(
+        handler,
+        InternetAddress.anyIPv4,
+        port,
+        shared: true,
+      );
       _server?.idleTimeout = Duration.zero;
       debugPrint('[SignalingServer] Listening on port $port');
     } catch (e) {

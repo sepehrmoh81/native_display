@@ -1,4 +1,5 @@
 import 'dart:ui';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +16,7 @@ import 'package:native_display/features/receiver/view/receiver_view.dart';
 import 'package:native_display/features/sender/controller/sender_controller.dart';
 import 'package:native_display/features/sender/view/sender_view.dart';
 import 'package:native_display/features/settings/controller/settings_controller.dart';
+import 'package:native_display/features/settings/view/settings_view.dart';
 import 'package:native_display/l10n/app_localizations.dart';
 import 'package:native_display/main.dart';
 
@@ -24,73 +26,57 @@ void main() {
   setUpAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('window_manager'),
-      (MethodCall methodCall) async => null,
-    );
+          const MethodChannel('window_manager'),
+          (MethodCall methodCall) async => null,
+        );
   });
 
   group('SdpOptimizer Tests', () {
-    test('injects bandwidth limits, reorders H264, and adds Google bitrate params', () {
-      const mockSdp = 'v=0\r\n'
-          'o=- 12345 2 IN IP4 127.0.0.1\r\n'
-          's=-\r\n'
-          't=0 0\r\n'
-          'm=video 9 UDP/TLS/RTP/SAVPF 96 97 100\r\n'
-          'c=IN IP4 0.0.0.0\r\n'
-          'a=rtpmap:96 VP8/90000\r\n'
-          'a=rtpmap:97 VP9/90000\r\n'
-          'a=rtpmap:100 H264/90000\r\n'
-          'a=fmtp:100 level-asymmetry-allowed=1;packetization-mode=1\r\n';
+    test(
+      'injects bandwidth limits, reorders H264, and adds Google bitrate params',
+      () {
+        const mockSdp =
+            'v=0\r\n'
+            'o=- 12345 2 IN IP4 127.0.0.1\r\n'
+            's=-\r\n'
+            't=0 0\r\n'
+            'm=video 9 UDP/TLS/RTP/SAVPF 96 97 100\r\n'
+            'c=IN IP4 0.0.0.0\r\n'
+            'a=rtpmap:96 VP8/90000\r\n'
+            'a=rtpmap:97 VP9/90000\r\n'
+            'a=rtpmap:100 H264/90000\r\n'
+            'a=fmtp:100 level-asymmetry-allowed=1;packetization-mode=1\r\n';
 
-      final optimized = SdpOptimizer.optimize(
-        mockSdp,
-        bitrateKbps: 15000,
-        fps: 60,
-        preferH264: true,
-      );
+        final optimized = SdpOptimizer.optimize(
+          mockSdp,
+          bitrateKbps: 15000,
+          fps: 60,
+          preferH264: true,
+        );
 
-      // Verify bandwidth lines are inserted
-      expect(optimized.contains('b=AS:15000'), isTrue);
-      expect(optimized.contains('b=TIAS:15000000'), isTrue);
+        // Verify bandwidth lines are inserted
+        expect(optimized.contains('b=AS:15000'), isTrue);
+        expect(optimized.contains('b=TIAS:15000000'), isTrue);
 
-      // Verify H264 (payload type 100) is reordered to the front
-      expect(optimized.contains('m=video 9 UDP/TLS/RTP/SAVPF 100 96 97'), isTrue);
+        // Verify H264 (payload type 100) is reordered to the front
+        expect(
+          optimized.contains('m=video 9 UDP/TLS/RTP/SAVPF 100 96 97'),
+          isTrue,
+        );
 
-      // Verify x-google bitrate constraints are injected
-      expect(optimized.contains('x-google-max-bitrate=15000'), isTrue);
-      expect(optimized.contains('x-google-min-bitrate='), isTrue);
-      expect(optimized.contains('x-google-start-bitrate='), isTrue);
-    });
+        // Verify x-google bitrate constraints are injected
+        expect(optimized.contains('x-google-max-bitrate=15000'), isTrue);
+        expect(optimized.contains('x-google-min-bitrate='), isTrue);
+        expect(optimized.contains('x-google-start-bitrate='), isTrue);
+      },
+    );
 
     test('handles empty and audio-only SDP gracefully', () {
       expect(SdpOptimizer.optimize('', bitrateKbps: 15000, fps: 60), '');
-      const audioSdp = 'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\na=rtpmap:111 opus/48000/2';
+      const audioSdp =
+          'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\na=rtpmap:111 opus/48000/2';
       final res = SdpOptimizer.optimize(audioSdp, bitrateKbps: 15000, fps: 60);
       expect(res.contains('b=AS:15000'), isFalse);
-    });
-
-    test('reorders VP8 to the front when preferVp8 is true', () {
-      const mockSdp = 'v=0\r\n'
-          'o=- 12345 2 IN IP4 127.0.0.1\r\n'
-          's=-\r\n'
-          't=0 0\r\n'
-          'm=video 9 UDP/TLS/RTP/SAVPF 100 96 97\r\n'
-          'c=IN IP4 0.0.0.0\r\n'
-          'a=rtpmap:96 VP8/90000\r\n'
-          'a=rtpmap:97 VP9/90000\r\n'
-          'a=rtpmap:100 H264/90000\r\n'
-          'a=fmtp:100 level-asymmetry-allowed=1;packetization-mode=1\r\n';
-
-      final optimized = SdpOptimizer.optimize(
-        mockSdp,
-        bitrateKbps: 12000,
-        fps: 60,
-        preferH264: false,
-        preferVp8: true,
-      );
-
-      expect(optimized.contains('m=video 9 UDP/TLS/RTP/SAVPF 96 100 97'), isTrue);
-      expect(optimized.contains('b=AS:12000'), isTrue);
     });
   });
   group('SignalingMessage Tests', () {
@@ -154,10 +140,16 @@ void main() {
   group('SettingsController Tests', () {
     test('updates quality preset and propagates bitrate and fps', () {
       final controller = SettingsController();
-      expect(controller.qualityConfig.preset, StreamQualityPreset.balanced1080p60);
+      expect(
+        controller.qualityConfig.preset,
+        StreamQualityPreset.balanced1080p60,
+      );
 
       controller.updatePreset(StreamQualityPreset.fidelity1440p60);
-      expect(controller.qualityConfig.preset, StreamQualityPreset.fidelity1440p60);
+      expect(
+        controller.qualityConfig.preset,
+        StreamQualityPreset.fidelity1440p60,
+      );
       expect(controller.qualityConfig.width, 2560);
       expect(controller.qualityConfig.height, 1440);
       expect(controller.qualityConfig.effectiveBitrateKbps, 25000);
@@ -270,18 +262,36 @@ void main() {
       expect(es.step1Title, 'Abre Native Display en tu ordenador principal.');
       expect(de.step1Title, 'Öffne Native Display auf deinem Hauptcomputer.');
 
-      expect(en.step2Title('Desktop-PC'), 'Select "Desktop-PC" under Available Receivers.');
-      expect(es.step2Title('Desktop-PC'), 'Selecciona "Desktop-PC" en Receptores disponibles.');
-      expect(de.step2Title('Desktop-PC'), 'Wähle "Desktop-PC" unter Verfügbare Empfänger aus.');
+      expect(
+        en.step2Title('Desktop-PC'),
+        'Select "Desktop-PC" under Available Receivers.',
+      );
+      expect(
+        es.step2Title('Desktop-PC'),
+        'Selecciona "Desktop-PC" en Receptores disponibles.',
+      );
+      expect(
+        de.step2Title('Desktop-PC'),
+        'Wähle "Desktop-PC" unter Verfügbare Empfänger aus.',
+      );
 
       // Check Sender actions & parameters
       expect(en.startExtend('Windows PC'), 'Extend to Windows PC');
       expect(es.startExtend('Windows PC'), 'Extender a Windows PC');
       expect(de.startExtend('Windows PC'), 'Auf Windows PC erweitern');
 
-      expect(en.matchReceiverResolution(1920, 1080), 'Match Receiver (1920×1080)');
-      expect(es.matchReceiverResolution(1920, 1080), 'Coincidir con receptor (1920×1080)');
-      expect(de.matchReceiverResolution(1920, 1080), 'Empfänger anpassen (1920×1080)');
+      expect(
+        en.matchReceiverResolution(1920, 1080),
+        'Match Receiver (1920×1080)',
+      );
+      expect(
+        es.matchReceiverResolution(1920, 1080),
+        'Coincidir con receptor (1920×1080)',
+      );
+      expect(
+        de.matchReceiverResolution(1920, 1080),
+        'Empfänger anpassen (1920×1080)',
+      );
 
       expect(en.senderMacOnlyTitle, 'macOS Required');
       expect(es.senderMacOnlyTitle, 'Se requiere macOS');
@@ -298,9 +308,7 @@ void main() {
         const CupertinoApp(
           home: CupertinoPageScaffold(
             child: Center(
-              child: LiquidGlassSurface(
-                child: Text('Glass Content'),
-              ),
+              child: LiquidGlassSurface(child: Text('Glass Content')),
             ),
           ),
         ),
@@ -309,15 +317,15 @@ void main() {
       expect(find.text('Glass Content'), findsOneWidget);
     });
 
-    testWidgets('renders localized CupertinoApp in Spanish and German', (tester) async {
+    testWidgets('renders localized CupertinoApp in Spanish and German', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const CupertinoApp(
           locale: Locale('es'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: Builder(
-            builder: _TestLocalizedWidget.build,
-          ),
+          home: Builder(builder: _TestLocalizedWidget.build),
         ),
       );
 
@@ -326,215 +334,326 @@ void main() {
       expect(find.text('Extender pantalla'), findsOneWidget);
     });
 
-    testWidgets('renders disabled macOS-only placeholder when SenderView is opened on non-macOS', (tester) async {
-      bool switched = false;
-      final discovery = DiscoveryService();
-      final webrtc = WebRTCManager();
-      final settings = SettingsController();
-      final senderController = SenderController(
-        discoveryService: discovery,
-        webrtcManager: webrtc,
-        settingsController: settings,
-      );
+    testWidgets(
+      'renders disabled macOS-only placeholder when SenderView is opened on non-macOS',
+      (tester) async {
+        bool switched = false;
+        final discovery = DiscoveryService();
+        final webrtc = WebRTCManager();
+        final settings = SettingsController();
+        final senderController = SenderController(
+          discoveryService: discovery,
+          webrtcManager: webrtc,
+          settingsController: settings,
+        );
 
-      await tester.pumpWidget(
-        CupertinoApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: CupertinoPageScaffold(
-            child: SenderView(
-              controller: senderController,
-              isMacOverride: false,
-              onSwitchToReceiver: () => switched = true,
+        await tester.pumpWidget(
+          CupertinoApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: CupertinoPageScaffold(
+              child: SenderView(
+                controller: senderController,
+                isMacOverride: false,
+                onSwitchToReceiver: () => switched = true,
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      await tester.pumpAndSettle();
+        await tester.pumpAndSettle();
 
-      expect(find.text('macOS Required'), findsOneWidget);
-      expect(find.text('Switch to Receive Display'), findsOneWidget);
+        expect(find.text('macOS Required'), findsOneWidget);
+        expect(find.text('Switch to Receive Display'), findsOneWidget);
 
-      await tester.tap(find.text('Switch to Receive Display'));
-      expect(switched, isTrue);
-    });
+        await tester.tap(find.text('Switch to Receive Display'));
+        expect(switched, isTrue);
+      },
+    );
 
-    testWidgets('MainShellView dims Extend Display and defaults to Receiver when isMacOverride is false', (tester) async {
-      tester.view.physicalSize = const Size(1280, 800);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+    testWidgets(
+      'MainShellView dims Extend Display and defaults to Receiver when isMacOverride is false',
+      (tester) async {
+        tester.view.physicalSize = const Size(1280, 800);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
 
-      final discovery = DiscoveryService();
-      final webrtc = WebRTCManager();
-      final settings = SettingsController();
-      final senderController = SenderController(
-        discoveryService: discovery,
-        webrtcManager: webrtc,
-        settingsController: settings,
-      );
-      final receiverController = ReceiverController(
-        discoveryService: discovery,
-        webrtcManager: webrtc,
-        autoStartOnWindows: false,
-      );
-      addTearDown(() {
-        receiverController.dispose();
-        senderController.dispose();
-      });
+        final discovery = DiscoveryService();
+        final webrtc = WebRTCManager();
+        final settings = SettingsController();
+        final senderController = SenderController(
+          discoveryService: discovery,
+          webrtcManager: webrtc,
+          settingsController: settings,
+        );
+        final receiverController = ReceiverController(
+          discoveryService: discovery,
+          webrtcManager: webrtc,
+          autoStartOnWindows: false,
+        );
+        addTearDown(() {
+          receiverController.dispose();
+          senderController.dispose();
+        });
 
-      await tester.pumpWidget(
-        CupertinoApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: MainShellView(
-            discoveryService: discovery,
-            senderController: senderController,
-            receiverController: receiverController,
-            settingsController: settings,
-            isMacOverride: false,
+        await tester.pumpWidget(
+          CupertinoApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: MainShellView(
+              discoveryService: discovery,
+              senderController: senderController,
+              receiverController: receiverController,
+              settingsController: settings,
+              isMacOverride: false,
+            ),
           ),
-        ),
-      );
+        );
 
-      await tester.pumpAndSettle();
+        await tester.pumpAndSettle();
 
-      // Expect macOS badge tag on dimmed Extend Display item
-      expect(find.text('macOS'), findsOneWidget);
-      // Expect Receive Display title is visible
-      expect(find.text('Receive Display'), findsWidgets);
-    });
+        // Expect macOS badge tag on dimmed Extend Display item
+        expect(find.text('macOS'), findsOneWidget);
+        // Expect Receive Display title is visible
+        expect(find.text('Receive Display'), findsWidgets);
 
-    testWidgets('ReceiverView renders active standby card when discovery is enabled', (tester) async {
-      final discovery = DiscoveryService();
-      final webrtc = WebRTCManager();
-      final receiverController = ReceiverController(
-        discoveryService: discovery,
-        webrtcManager: webrtc,
-        autoStartOnWindows: false,
-      );
-      addTearDown(() => receiverController.dispose());
+        // Switch to Diagnostics
+        await tester.tap(find.text('Diagnostics'));
+        await tester.pumpAndSettle();
 
-      await tester.pumpWidget(
-        CupertinoApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: CupertinoPageScaffold(
-            child: ReceiverView(controller: receiverController),
+        expect(find.text('Diagnostics & Performance'), findsOneWidget);
+
+        // Switch back to Receive Display
+        await tester.tap(find.text('Receive Display').first);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Receive Display'), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'MainShellView preserves Receiver listening state when switching between Receive Display, Diagnostics, and Settings',
+      (tester) async {
+        final discovery = DiscoveryService();
+        final webrtc = WebRTCManager();
+        final settings = SettingsController();
+        final senderController = SenderController(
+          discoveryService: discovery,
+          webrtcManager: webrtc,
+          settingsController: settings,
+        );
+        final receiverController = _TestReceiverController(
+          discoveryService: discovery,
+          webrtcManager: webrtc,
+        );
+        addTearDown(() {
+          receiverController.dispose();
+          senderController.dispose();
+        });
+
+        await tester.pumpWidget(
+          CupertinoApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: MainShellView(
+              discoveryService: discovery,
+              senderController: senderController,
+              receiverController: receiverController,
+              settingsController: settings,
+              isMacOverride: true,
+            ),
           ),
-        ),
-      );
+        );
 
-      await tester.pumpAndSettle();
+        await tester.pumpAndSettle();
 
-      // Starts with discovery enabled: active card is visible
-      expect(receiverController.isDiscoveryEnabled, isTrue);
-      expect(find.byType(CupertinoSwitch), findsOneWidget);
-      expect(find.text('Rename Device'), findsOneWidget);
-      expect(find.text('Display Discovery Is Paused'), findsNothing);
-    });
+        // macOS starts on Sender tab, Receiver is idle
+        expect(receiverController.status, ReceiverStatus.idle);
+        expect(receiverController.startListeningCalls, 0);
+        expect(receiverController.stopListeningCalls, 0);
 
-    testWidgets('ReceiverView renders dormant card when discovery is disabled', (tester) async {
-      final discovery = DiscoveryService();
-      final webrtc = WebRTCManager();
-      final receiverController = ReceiverController(
-        discoveryService: discovery,
-        webrtcManager: webrtc,
-        autoStartOnWindows: false,
-      );
-      addTearDown(() => receiverController.dispose());
+        // Switch to Receive Display: Receiver should start listening
+        await tester.tap(find.text('Receive Display').first);
+        await tester.pumpAndSettle();
+        expect(receiverController.status, ReceiverStatus.listening);
+        expect(receiverController.startListeningCalls, 1);
+        expect(receiverController.stopListeningCalls, 0);
 
-      await receiverController.setDiscoveryEnabled(false);
+        // Switch to Diagnostics: Receiver MUST stay listening (not stopped)
+        await tester.tap(find.text('Diagnostics').first);
+        await tester.pumpAndSettle();
+        expect(find.text('Diagnostics & Performance'), findsOneWidget);
+        expect(receiverController.status, ReceiverStatus.listening);
+        expect(receiverController.startListeningCalls, 1);
+        expect(receiverController.stopListeningCalls, 0);
 
-      await tester.pumpWidget(
-        CupertinoApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: CupertinoPageScaffold(
-            child: ReceiverView(controller: receiverController),
+        // Switch back to Receive Display: Receiver MUST stay listening without restarts
+        await tester.tap(find.text('Receive Display').first);
+        await tester.pumpAndSettle();
+        expect(find.text('Receive Display'), findsWidgets);
+        expect(receiverController.status, ReceiverStatus.listening);
+        expect(receiverController.startListeningCalls, 1);
+        expect(receiverController.stopListeningCalls, 0);
+
+        // Switch to Settings: Receiver MUST stay listening
+        await tester.tap(find.byIcon(CupertinoIcons.gear_alt));
+        await tester.pumpAndSettle();
+        expect(find.byType(SettingsView), findsOneWidget);
+        expect(receiverController.status, ReceiverStatus.listening);
+        expect(receiverController.startListeningCalls, 1);
+        expect(receiverController.stopListeningCalls, 0);
+
+        // Switch to Extend Display (Sender): Now Receiver stops listening
+        await tester.tap(find.text('Extend Display').first);
+        await tester.pumpAndSettle();
+        expect(receiverController.status, ReceiverStatus.idle);
+        expect(receiverController.stopListeningCalls, 1);
+      },
+    );
+
+    testWidgets(
+      'ReceiverView renders active standby card when discovery is enabled',
+      (tester) async {
+        final discovery = DiscoveryService();
+        final webrtc = WebRTCManager();
+        final receiverController = ReceiverController(
+          discoveryService: discovery,
+          webrtcManager: webrtc,
+          autoStartOnWindows: false,
+        );
+        addTearDown(() => receiverController.dispose());
+
+        await tester.pumpWidget(
+          CupertinoApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: CupertinoPageScaffold(
+              child: ReceiverView(controller: receiverController),
+            ),
           ),
-        ),
-      );
+        );
 
-      await tester.pumpAndSettle();
+        await tester.pumpAndSettle();
 
-      expect(receiverController.isDiscoveryEnabled, isFalse);
-      expect(find.text('Display Discovery Is Paused'), findsOneWidget);
-      expect(find.text('Discovery Inactive'), findsOneWidget);
-      expect(find.text('Turn On Discovery'), findsOneWidget);
-      expect(find.text('Rename Device'), findsNothing);
-    });
+        // Starts with discovery enabled: active card is visible
+        expect(receiverController.isDiscoveryEnabled, isTrue);
+        expect(find.byType(CupertinoSwitch), findsOneWidget);
+        expect(find.text('Rename Device'), findsOneWidget);
+        expect(find.text('Display Discovery Is Paused'), findsNothing);
+      },
+    );
 
-    testWidgets('ReceiverView renders active streaming view and reveals compact capsule HUD on top edge hover', (tester) async {
-      tester.view.physicalSize = const Size(1280, 800);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+    testWidgets(
+      'ReceiverView renders dormant card when discovery is disabled',
+      (tester) async {
+        final discovery = DiscoveryService();
+        final webrtc = WebRTCManager();
+        final receiverController = ReceiverController(
+          discoveryService: discovery,
+          webrtcManager: webrtc,
+          autoStartOnWindows: false,
+        );
+        addTearDown(() => receiverController.dispose());
 
-      final discovery = DiscoveryService();
-      final webrtc = WebRTCManager();
-      final receiverController = ReceiverController(
-        discoveryService: discovery,
-        webrtcManager: webrtc,
-        autoStartOnWindows: false,
-      );
-      addTearDown(() => receiverController.dispose());
+        await receiverController.setDiscoveryEnabled(false);
 
-      receiverController.setStatusForTesting(ReceiverStatus.connected);
-
-      await tester.pumpWidget(
-        CupertinoApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: CupertinoPageScaffold(
-            child: ReceiverView(controller: receiverController),
+        await tester.pumpWidget(
+          CupertinoApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: CupertinoPageScaffold(
+              child: ReceiverView(controller: receiverController),
+            ),
           ),
-        ),
-      );
+        );
 
-      await tester.pump();
+        await tester.pumpAndSettle();
 
-      // Verify RTCVideoView is rendered
-      expect(find.byType(RTCVideoView), findsOneWidget);
+        expect(receiverController.isDiscoveryEnabled, isFalse);
+        expect(find.text('Display Discovery Is Paused'), findsOneWidget);
+        expect(find.text('Discovery Inactive'), findsOneWidget);
+        expect(find.text('Turn On Discovery'), findsOneWidget);
+        expect(find.text('Rename Device'), findsNothing);
+      },
+    );
 
-      // Verify compact HUD is initially hidden off-screen (AnimatedSlide offset is (0, -1.2))
-      final slideFinder = find.byType(AnimatedSlide);
-      expect(slideFinder, findsOneWidget);
-      final AnimatedSlide slideWidget = tester.widget(slideFinder);
-      expect(slideWidget.offset, const Offset(0, -1.2));
+    testWidgets(
+      'ReceiverView renders active streaming view and reveals compact capsule HUD on top edge hover',
+      (tester) async {
+        tester.view.physicalSize = const Size(1280, 800);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
 
-      final opacityFinder = find.byType(AnimatedOpacity);
-      expect(opacityFinder, findsOneWidget);
-      final AnimatedOpacity opacityWidget = tester.widget(opacityFinder);
-      expect(opacityWidget.opacity, 0.0);
+        final discovery = DiscoveryService();
+        final webrtc = WebRTCManager();
+        final receiverController = ReceiverController(
+          discoveryService: discovery,
+          webrtcManager: webrtc,
+          autoStartOnWindows: false,
+        );
+        addTearDown(() => receiverController.dispose());
 
-      // Hover over the top edge strip (y = 10)
-      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
-      await gesture.addPointer(location: const Offset(640, 10));
-      await tester.pump();
+        receiverController.setStatusForTesting(ReceiverStatus.connected);
 
-      // HUD should now be triggered to slide in and fade in
-      final AnimatedSlide revealedSlide = tester.widget(slideFinder);
-      expect(revealedSlide.offset, Offset.zero);
-      final AnimatedOpacity revealedOpacity = tester.widget(opacityFinder);
-      expect(revealedOpacity.opacity, 1.0);
+        await tester.pumpWidget(
+          CupertinoApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: CupertinoPageScaffold(
+              child: ReceiverView(controller: receiverController),
+            ),
+          ),
+        );
 
-      // Fast forward animation
-      await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump();
 
-      // Verify compact capsule contents
-      expect(find.text('Streaming'), findsOneWidget);
-      expect(find.text('Full Screen'), findsOneWidget);
-      expect(find.text('Disconnect'), findsOneWidget);
+        // Verify RTCVideoView is rendered
+        expect(find.byType(RTCVideoView), findsOneWidget);
 
-      // Auto-hide timer test: after 3.5s of no interaction, HUD auto-hides
-      await tester.pump(const Duration(milliseconds: 3600));
-      final AnimatedSlide autoHiddenSlide = tester.widget(slideFinder);
-      expect(autoHiddenSlide.offset, const Offset(0, -1.2));
+        // Verify compact HUD is initially hidden off-screen (AnimatedSlide offset is (0, -1.2))
+        final slideFinder = find.byType(AnimatedSlide);
+        expect(slideFinder, findsOneWidget);
+        final AnimatedSlide slideWidget = tester.widget(slideFinder);
+        expect(slideWidget.offset, const Offset(0, -1.2));
 
-      await gesture.removePointer();
-    });
+        final opacityFinder = find.byType(AnimatedOpacity);
+        expect(opacityFinder, findsOneWidget);
+        final AnimatedOpacity opacityWidget = tester.widget(opacityFinder);
+        expect(opacityWidget.opacity, 0.0);
 
-    testWidgets('ReceiverView handles Escape key to exit fullscreen mode', (tester) async {
+        // Hover over the top edge strip (y = 10)
+        final gesture = await tester.createGesture(
+          kind: PointerDeviceKind.mouse,
+        );
+        await gesture.addPointer(location: const Offset(640, 10));
+        await tester.pump();
+
+        // HUD should now be triggered to slide in and fade in
+        final AnimatedSlide revealedSlide = tester.widget(slideFinder);
+        expect(revealedSlide.offset, Offset.zero);
+        final AnimatedOpacity revealedOpacity = tester.widget(opacityFinder);
+        expect(revealedOpacity.opacity, 1.0);
+
+        // Fast forward animation
+        await tester.pump(const Duration(milliseconds: 300));
+
+        // Verify compact capsule contents
+        expect(find.text('Streaming'), findsOneWidget);
+        expect(find.text('Full Screen'), findsOneWidget);
+        expect(find.text('Disconnect'), findsOneWidget);
+
+        // Auto-hide timer test: after 3.5s of no interaction, HUD auto-hides
+        await tester.pump(const Duration(milliseconds: 3600));
+        final AnimatedSlide autoHiddenSlide = tester.widget(slideFinder);
+        expect(autoHiddenSlide.offset, const Offset(0, -1.2));
+
+        await gesture.removePointer();
+      },
+    );
+
+    testWidgets('ReceiverView handles Escape key to exit fullscreen mode', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1280, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -578,11 +697,30 @@ class _TestLocalizedWidget {
     final l10n = AppLocalizations.of(context)!;
     return CupertinoPageScaffold(
       child: Column(
-        children: [
-          Text(l10n.navSettings),
-          Text(l10n.navExtendDisplay),
-        ],
+        children: [Text(l10n.navSettings), Text(l10n.navExtendDisplay)],
       ),
     );
+  }
+}
+
+class _TestReceiverController extends ReceiverController {
+  int startListeningCalls = 0;
+  int stopListeningCalls = 0;
+
+  _TestReceiverController({
+    required super.discoveryService,
+    required super.webrtcManager,
+  }) : super(autoStartOnWindows: false);
+
+  @override
+  Future<void> startListening() async {
+    startListeningCalls++;
+    setStatusForTesting(ReceiverStatus.listening);
+  }
+
+  @override
+  Future<void> stopListening() async {
+    stopListeningCalls++;
+    setStatusForTesting(ReceiverStatus.idle);
   }
 }

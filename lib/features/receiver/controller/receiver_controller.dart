@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
+
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:window_manager/window_manager.dart';
+
 import '../../../core/constants/app_constants.dart';
 import '../../../core/network/discovery_service.dart';
 import '../../../core/network/models/peer_device.dart';
@@ -11,18 +13,14 @@ import '../../../core/network/models/signaling_message.dart';
 import '../../../core/network/signaling_server.dart';
 import '../../../core/webrtc/webrtc_manager.dart';
 
-enum ReceiverStatus {
-  idle,
-  listening,
-  connected,
-  error,
-}
+enum ReceiverStatus { idle, listening, connected, error }
 
 class ReceiverController extends ChangeNotifier with WindowListener {
   final DiscoveryService discoveryService;
   final WebRTCManager webrtcManager;
-  final SignalingServer signalingServer =
-      SignalingServer(port: AppConstants.defaultSignalingPort);
+  final SignalingServer signalingServer = SignalingServer(
+    port: AppConstants.defaultSignalingPort,
+  );
 
   ReceiverStatus _status = ReceiverStatus.idle;
   ReceiverStatus get status => _status;
@@ -89,14 +87,19 @@ class ReceiverController extends ChangeNotifier with WindowListener {
           _refreshRate = hz;
         }
         debugPrint(
-            '[ReceiverController] Detected display: ${_screenWidth}x$_screenHeight @ ${_refreshRate}Hz');
+          '[ReceiverController] Detected display: ${_screenWidth}x$_screenHeight @ ${_refreshRate}Hz',
+        );
       }
     } catch (e) {
       debugPrint('[ReceiverController] Could not detect display specs: $e');
     }
   }
 
-  void overrideDisplayCapabilities({int? width, int? height, int? refreshRate}) {
+  void overrideDisplayCapabilities({
+    int? width,
+    int? height,
+    int? refreshRate,
+  }) {
     if (width != null && width > 0) _screenWidth = width;
     if (height != null && height > 0) _screenHeight = height;
     if (refreshRate != null && refreshRate > 0) _refreshRate = refreshRate;
@@ -127,7 +130,9 @@ class ReceiverController extends ChangeNotifier with WindowListener {
     };
 
     signalingServer.onClientDisconnected = (client) {
-      debugPrint('[ReceiverController] Client disconnected from signaling server');
+      debugPrint(
+        '[ReceiverController] Client disconnected from signaling server',
+      );
       if (_activeClient == client) {
         _activeClient = null;
         webrtcManager.stopSession();
@@ -138,11 +143,15 @@ class ReceiverController extends ChangeNotifier with WindowListener {
 
     // Forward WebRTC local signaling messages (e.g. answer & candidates) to sender client
     webrtcManager.onSignalingMessageReady = (message) {
-      debugPrint('[ReceiverController] WebRTC message ready: ${message.type.name} (has activeClient: ${_activeClient != null})');
+      debugPrint(
+        '[ReceiverController] WebRTC message ready: ${message.type.name} (has activeClient: ${_activeClient != null})',
+      );
       if (_activeClient != null) {
         signalingServer.sendTo(_activeClient!, message);
       } else {
-        debugPrint('[ReceiverController] Fallback: Broadcasting ${message.type.name} to all connected clients');
+        debugPrint(
+          '[ReceiverController] Fallback: Broadcasting ${message.type.name} to all connected clients',
+        );
         signalingServer.broadcast(message);
       }
     };
@@ -156,7 +165,7 @@ class ReceiverController extends ChangeNotifier with WindowListener {
         _status = ReceiverStatus.error;
         _errorMessage = 'Connection lost or WebRTC negotiation failed.';
       } else if (webrtcManager.status == ConnectionStateStatus.idle ||
-                 webrtcManager.status == ConnectionStateStatus.disconnected) {
+          webrtcManager.status == ConnectionStateStatus.disconnected) {
         if (_status != ReceiverStatus.listening) {
           _status = ReceiverStatus.listening;
         }
@@ -178,12 +187,22 @@ class ReceiverController extends ChangeNotifier with WindowListener {
     notifyListeners();
   }
 
+  Completer<void>? _operationLock;
+
   Future<void> startListening() async {
-    _status = ReceiverStatus.listening;
-    _errorMessage = null;
-    notifyListeners();
+    while (_operationLock != null) {
+      await _operationLock!.future;
+    }
+    if (_status == ReceiverStatus.listening) return;
+
+    final completer = Completer<void>();
+    _operationLock = completer;
 
     try {
+      _status = ReceiverStatus.listening;
+      _errorMessage = null;
+      notifyListeners();
+
       // 1. Detect latest display capabilities
       _detectDisplayCapabilities();
 
@@ -197,7 +216,9 @@ class ReceiverController extends ChangeNotifier with WindowListener {
         mode: AppMode.receiver,
         platform: Platform.isWindows
             ? DevicePlatform.windows
-            : (Platform.isMacOS ? DevicePlatform.macos : DevicePlatform.unknown),
+            : (Platform.isMacOS
+                  ? DevicePlatform.macos
+                  : DevicePlatform.unknown),
         screenWidth: _screenWidth,
         screenHeight: _screenHeight,
         refreshRate: _refreshRate,
@@ -206,32 +227,50 @@ class ReceiverController extends ChangeNotifier with WindowListener {
       _status = ReceiverStatus.error;
       _errorMessage = 'Could not start receiver service: $e';
       notifyListeners();
+    } finally {
+      completer.complete();
+      if (_operationLock == completer) {
+        _operationLock = null;
+      }
     }
   }
 
   Future<void> stopListening() async {
-    try {
-      await discoveryService.stopBroadcasting();
-    } catch (e) {
-      debugPrint('[ReceiverController] stopBroadcasting error: $e');
+    while (_operationLock != null) {
+      await _operationLock!.future;
     }
+    final completer = Completer<void>();
+    _operationLock = completer;
 
     try {
-      await signalingServer.stop();
-    } catch (e) {
-      debugPrint('[ReceiverController] signalingServer.stop error: $e');
-    }
+      try {
+        await discoveryService.stopBroadcasting();
+      } catch (e) {
+        debugPrint('[ReceiverController] stopBroadcasting error: $e');
+      }
 
-    try {
-      await webrtcManager.stopSession();
-    } catch (e) {
-      debugPrint('[ReceiverController] webrtcManager.stopSession error: $e');
-    }
+      try {
+        await signalingServer.stop();
+      } catch (e) {
+        debugPrint('[ReceiverController] signalingServer.stop error: $e');
+      }
 
-    _activeClient = null;
-    _status = ReceiverStatus.idle;
-    _errorMessage = null;
-    notifyListeners();
+      try {
+        await webrtcManager.stopSession();
+      } catch (e) {
+        debugPrint('[ReceiverController] webrtcManager.stopSession error: $e');
+      }
+
+      _activeClient = null;
+      _status = ReceiverStatus.idle;
+      _errorMessage = null;
+      notifyListeners();
+    } finally {
+      completer.complete();
+      if (_operationLock == completer) {
+        _operationLock = null;
+      }
+    }
   }
 
   Future<void> setDiscoveryEnabled(bool enabled) async {
@@ -282,11 +321,14 @@ class ReceiverController extends ChangeNotifier with WindowListener {
 
   Future<void> disconnectSender() async {
     if (_activeClient != null) {
-      signalingServer.sendTo(_activeClient!, const SignalingMessage(
-        type: SignalingType.disconnect,
-        data: {},
-        senderId: 'receiver',
-      ));
+      signalingServer.sendTo(
+        _activeClient!,
+        const SignalingMessage(
+          type: SignalingType.disconnect,
+          data: {},
+          senderId: 'receiver',
+        ),
+      );
     }
     await webrtcManager.stopSession();
     _status = ReceiverStatus.listening;

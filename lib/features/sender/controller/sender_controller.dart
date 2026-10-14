@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+
 import '../../../core/constants/app_constants.dart';
 import '../../../core/network/discovery_service.dart';
 import '../../../core/network/models/peer_device.dart';
@@ -13,18 +15,9 @@ import '../../../native/screen_capture_bridge.dart';
 import '../../../native/virtual_display_bridge.dart';
 import '../../settings/controller/settings_controller.dart';
 
-enum SenderStatus {
-  idle,
-  searching,
-  connecting,
-  streaming,
-  error,
-}
+enum SenderStatus { idle, searching, connecting, streaming, error }
 
-enum SenderStreamMode {
-  extend,
-  mirror,
-}
+enum SenderStreamMode { extend, mirror }
 
 class SenderController extends ChangeNotifier {
   final DiscoveryService discoveryService;
@@ -35,8 +28,9 @@ class SenderController extends ChangeNotifier {
   SenderStatus _status = SenderStatus.idle;
   SenderStatus get status => _status;
 
-  SenderStreamMode _streamMode =
-      Platform.isMacOS ? SenderStreamMode.extend : SenderStreamMode.mirror;
+  SenderStreamMode _streamMode = Platform.isMacOS
+      ? SenderStreamMode.extend
+      : SenderStreamMode.mirror;
   SenderStreamMode get streamMode => _streamMode;
 
   String? _errorMessage;
@@ -72,8 +66,8 @@ class SenderController extends ChangeNotifier {
   }
 
   double get virtualFps => settingsController.resolveRefreshRate(
-        receiverRefreshRate: _selectedReceiver?.refreshRate,
-      );
+    receiverRefreshRate: _selectedReceiver?.refreshRate,
+  );
 
   bool get virtualHiDPI => settingsController.virtualHiDPI;
 
@@ -81,7 +75,7 @@ class SenderController extends ChangeNotifier {
     required this.discoveryService,
     required this.webrtcManager,
     SettingsController? settingsController,
-  })  : settingsController = settingsController ?? SettingsController() {
+  }) : settingsController = settingsController ?? SettingsController() {
     _init();
   }
 
@@ -157,7 +151,9 @@ class SenderController extends ChangeNotifier {
   void _onDiscoveryUpdate() {
     final receivers = availableReceivers;
     if (_selectedReceiver != null) {
-      final updated = receivers.where((r) => r.id == _selectedReceiver!.id).firstOrNull;
+      final updated = receivers
+          .where((r) => r.id == _selectedReceiver!.id)
+          .firstOrNull;
       if (updated != null) {
         _selectedReceiver = updated;
       } else if (receivers.isNotEmpty) {
@@ -260,7 +256,8 @@ class SenderController extends ChangeNotifier {
           height: virtualHeight,
           refreshRate: virtualFps,
           hiDPI: virtualHiDPI,
-          name: 'NativeDisplay - ${_selectedReceiver?.name ?? "Extended Screen"}',
+          name:
+              'NativeDisplay - ${_selectedReceiver?.name ?? "Extended Screen"}',
         );
 
         if (virtualDisplay == null) {
@@ -286,23 +283,31 @@ class SenderController extends ChangeNotifier {
         }
 
         // If not matched by string or ID, fallback to the latest screen source
-        targetCaptureSource ??= sources
-            .where((s) => s.type == SourceType.Screen)
-            .lastOrNull ?? sources.firstOrNull;
+        targetCaptureSource ??=
+            sources.where((s) => s.type == SourceType.Screen).lastOrNull ??
+            sources.firstOrNull;
 
-        debugPrint('[SenderController] Found ${sources.length} sources: ${sources.map((s) => "${s.id}:${s.name}:${s.type.name}").join(", ")}');
-        debugPrint('[SenderController] Selected targetCaptureSource: ${targetCaptureSource?.id}:${targetCaptureSource?.name}');
+        debugPrint(
+          '[SenderController] Found ${sources.length} sources: ${sources.map((s) => "${s.id}:${s.name}:${s.type.name}").join(", ")}',
+        );
+        debugPrint(
+          '[SenderController] Selected targetCaptureSource: ${targetCaptureSource?.id}:${targetCaptureSource?.name}',
+        );
       } else {
         // Mirror mode: use whatever source was selected in the UI
         targetCaptureSource = webrtcManager.selectedSource;
       }
 
       // 4. Connect signaling client to target receiver (refresh with latest discovered IP)
-      final freshReceiver = availableReceivers.where((r) => r.id == _selectedReceiver!.id).firstOrNull;
+      final freshReceiver = availableReceivers
+          .where((r) => r.id == _selectedReceiver!.id)
+          .firstOrNull;
       if (freshReceiver != null) {
         _selectedReceiver = freshReceiver;
       }
-      debugPrint('[SenderController] Target receiver: ${_selectedReceiver?.name} at ${_selectedReceiver?.endpoint}');
+      debugPrint(
+        '[SenderController] Target receiver: ${_selectedReceiver?.name} at ${_selectedReceiver?.endpoint}',
+      );
       await signalingClient.connect(_selectedReceiver!.endpoint);
 
       // 5. Sync quality config with resolved virtual display refresh rate & start session
@@ -311,18 +316,13 @@ class SenderController extends ChangeNotifier {
         customFps: activeFps > 0 ? activeFps : 60,
       );
       webrtcManager.updateQualityConfig(syncedConfig);
-      final isWindowsReceiver =
-          _selectedReceiver?.platform == DevicePlatform.windows;
-      await webrtcManager.startSenderSession(
-        source: targetCaptureSource,
-        preferVp8: isWindowsReceiver ||
-            !settingsController.qualityConfig.enableHardwareAcceleration,
-      );
+      await webrtcManager.startSenderSession(source: targetCaptureSource);
     } catch (e) {
       // If we created a virtual display but connection failed, clean it up
       if (_activeVirtualDisplay != null) {
         await VirtualDisplayBridge.destroyVirtualDisplay(
-            _activeVirtualDisplay!.displayId);
+          _activeVirtualDisplay!.displayId,
+        );
         _activeVirtualDisplay = null;
       }
       _status = SenderStatus.error;
@@ -332,18 +332,21 @@ class SenderController extends ChangeNotifier {
   }
 
   Future<void> stopStreaming() async {
-    signalingClient.send(const SignalingMessage(
-      type: SignalingType.disconnect,
-      data: {},
-      senderId: 'sender',
-    ));
+    signalingClient.send(
+      const SignalingMessage(
+        type: SignalingType.disconnect,
+        data: {},
+        senderId: 'sender',
+      ),
+    );
     await signalingClient.disconnect();
     await webrtcManager.stopSession();
 
     // Destroy virtual display if active
     if (_activeVirtualDisplay != null) {
       await VirtualDisplayBridge.destroyVirtualDisplay(
-          _activeVirtualDisplay!.displayId);
+        _activeVirtualDisplay!.displayId,
+      );
       _activeVirtualDisplay = null;
     }
 
@@ -362,7 +365,8 @@ class SenderController extends ChangeNotifier {
     signalingClient.disconnect();
     if (_activeVirtualDisplay != null) {
       VirtualDisplayBridge.destroyVirtualDisplay(
-          _activeVirtualDisplay!.displayId);
+        _activeVirtualDisplay!.displayId,
+      );
       _activeVirtualDisplay = null;
     }
     VirtualDisplayBridge.destroyAllVirtualDisplays();
