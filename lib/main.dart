@@ -206,12 +206,14 @@ class _MainShellViewState extends State<MainShellView> {
     setState(() => _selectedNav = item);
     if (_isMac) {
       if (item == NavigationItem.receiver) {
+        widget.senderController.stopDiscovery();
         if (widget.receiverController.isDiscoveryEnabled &&
             widget.receiverController.status == ReceiverStatus.idle) {
           unawaited(widget.receiverController.startListening());
         }
       } else if (item == NavigationItem.sender) {
         unawaited(widget.receiverController.stopListening());
+        widget.senderController.startDiscovery();
       }
     }
   }

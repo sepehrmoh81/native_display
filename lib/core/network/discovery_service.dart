@@ -23,6 +23,7 @@ class DiscoveryService extends ChangeNotifier {
   bool get isBroadcasting => _isBroadcasting;
 
   String? _broadcastId;
+  String? _broadcastDeviceName;
 
   bool _isScanning = false;
   bool get isScanning => _isScanning;
@@ -38,6 +39,7 @@ class DiscoveryService extends ChangeNotifier {
     int refreshRate = 60,
   }) async {
     if (_isBroadcasting) await stopBroadcasting();
+    if (_isScanning) await stopScanning();
 
     final selfDevice = PeerDevice(
       id: '${platform.name}-${Platform.localHostname}-$port',
@@ -52,6 +54,7 @@ class DiscoveryService extends ChangeNotifier {
     );
 
     _broadcastId = selfDevice.id;
+    _broadcastDeviceName = deviceName;
 
     // 1. Bonsoir mDNS Broadcast
     try {
@@ -122,12 +125,19 @@ class DiscoveryService extends ChangeNotifier {
 
     _isBroadcasting = false;
     _broadcastId = null;
+    _broadcastDeviceName = null;
     notifyListeners();
   }
 
   /// Start scanning for available peers (e.g., Windows receivers)
   Future<void> startScanning() async {
     if (_isScanning) return;
+    if (_isBroadcasting) {
+      debugPrint(
+        '[DiscoveryService] Skipping discovery scan while broadcasting as receiver',
+      );
+      return;
+    }
     _discoveredDevices.clear();
 
     // 1. Bonsoir mDNS discovery
@@ -140,10 +150,22 @@ class DiscoveryService extends ChangeNotifier {
       );
       _bonsoirDiscovery?.eventStream?.listen((event) async {
         if (event is BonsoirDiscoveryServiceFoundEvent) {
+          final sName = event.service.name;
+          final sId = event.service.attributes['id'];
+          if ((_broadcastId != null && sId == _broadcastId) ||
+              (_broadcastDeviceName != null && sName == _broadcastDeviceName)) {
+            return;
+          }
           event.service.resolve(_bonsoirDiscovery!.serviceResolver);
         } else if (event is BonsoirDiscoveryServiceResolvedEvent) {
           final s = event.service;
           final attrs = s.attributes;
+          final sName = s.name;
+          final sId = attrs['id'];
+          if ((_broadcastId != null && sId == _broadcastId) ||
+              (_broadcastDeviceName != null && sName == _broadcastDeviceName)) {
+            return;
+          }
 
           // 1. Try explicit IPv4 from broadcast attributes
           String host = attrs['ip'] ?? '';

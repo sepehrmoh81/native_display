@@ -78,7 +78,6 @@ class SignalingServer {
         port,
         shared: true,
       );
-      _server?.idleTimeout = Duration.zero;
       debugPrint('[SignalingServer] Listening on port $port');
     } catch (e) {
       debugPrint('[SignalingServer] Failed to bind port $port: $e');

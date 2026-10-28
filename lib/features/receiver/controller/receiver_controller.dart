@@ -187,16 +187,11 @@ class ReceiverController extends ChangeNotifier with WindowListener {
     notifyListeners();
   }
 
-  Completer<void>? _operationLock;
+  bool _isOperating = false;
 
   Future<void> startListening() async {
-    while (_operationLock != null) {
-      await _operationLock!.future;
-    }
-    if (_status == ReceiverStatus.listening) return;
-
-    final completer = Completer<void>();
-    _operationLock = completer;
+    if (_isOperating || _status == ReceiverStatus.listening) return;
+    _isOperating = true;
 
     try {
       _status = ReceiverStatus.listening;
@@ -209,7 +204,10 @@ class ReceiverController extends ChangeNotifier with WindowListener {
       // 2. Start Signaling WebSocket server
       await signalingServer.start();
 
-      // 3. Broadcast service via mDNS and UDP with true monitor capabilities
+      // 3. Prepare WebRTC receiver session
+      await webrtcManager.prepareReceiverSession();
+
+      // 4. Broadcast service via mDNS and UDP with true monitor capabilities
       await discoveryService.startBroadcasting(
         deviceName: _deviceName,
         port: AppConstants.defaultSignalingPort,
@@ -228,19 +226,13 @@ class ReceiverController extends ChangeNotifier with WindowListener {
       _errorMessage = 'Could not start receiver service: $e';
       notifyListeners();
     } finally {
-      completer.complete();
-      if (_operationLock == completer) {
-        _operationLock = null;
-      }
+      _isOperating = false;
     }
   }
 
   Future<void> stopListening() async {
-    while (_operationLock != null) {
-      await _operationLock!.future;
-    }
-    final completer = Completer<void>();
-    _operationLock = completer;
+    if (_isOperating) return;
+    _isOperating = true;
 
     try {
       try {
@@ -266,10 +258,7 @@ class ReceiverController extends ChangeNotifier with WindowListener {
       _errorMessage = null;
       notifyListeners();
     } finally {
-      completer.complete();
-      if (_operationLock == completer) {
-        _operationLock = null;
-      }
+      _isOperating = false;
     }
   }
 

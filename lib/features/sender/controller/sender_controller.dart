@@ -80,15 +80,15 @@ class SenderController extends ChangeNotifier {
   }
 
   Future<void> _init() async {
-    // Check macOS screen recording permission
+    // Sender mode (screen capturing and scanning for receivers) is macOS-only.
+    // On Windows and other platforms, the app operates strictly as a receiver.
     if (Platform.isMacOS) {
       _hasScreenPermission =
           await ScreenCaptureBridge.hasScreenRecordingPermission();
       _nativeDisplays = await ScreenCaptureBridge.getNativeDisplays();
+      await webrtcManager.refreshCaptureSources();
+      startDiscovery();
     }
-
-    // Refresh capture sources (screens/windows)
-    await webrtcManager.refreshCaptureSources();
 
     // Listen to discovery updates
     discoveryService.addListener(_onDiscoveryUpdate);
@@ -143,9 +143,6 @@ class SenderController extends ChangeNotifier {
       }
       notifyListeners();
     });
-
-    // Start auto-discovering receivers
-    startDiscovery();
   }
 
   void _onDiscoveryUpdate() {
@@ -229,8 +226,15 @@ class SenderController extends ChangeNotifier {
   }
 
   void startDiscovery() {
+    if (!Platform.isMacOS) return;
     _status = SenderStatus.searching;
     discoveryService.startScanning();
+    notifyListeners();
+  }
+
+  void stopDiscovery() {
+    _status = SenderStatus.idle;
+    discoveryService.stopScanning();
     notifyListeners();
   }
 
@@ -361,6 +365,7 @@ class SenderController extends ChangeNotifier {
 
   @override
   void dispose() {
+    stopDiscovery();
     discoveryService.removeListener(_onDiscoveryUpdate);
     signalingClient.disconnect();
     if (_activeVirtualDisplay != null) {

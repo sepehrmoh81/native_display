@@ -437,7 +437,7 @@ void main() {
         final discovery = DiscoveryService();
         final webrtc = WebRTCManager();
         final settings = SettingsController();
-        final senderController = SenderController(
+        final senderController = _TestSenderController(
           discoveryService: discovery,
           webrtcManager: webrtc,
           settingsController: settings,
@@ -724,3 +724,25 @@ class _TestReceiverController extends ReceiverController {
     setStatusForTesting(ReceiverStatus.idle);
   }
 }
+
+class _TestSenderController extends SenderController {
+  int startDiscoveryCalls = 0;
+  int stopDiscoveryCalls = 0;
+
+  _TestSenderController({
+    required super.discoveryService,
+    required super.webrtcManager,
+    super.settingsController,
+  });
+
+  @override
+  void startDiscovery() {
+    startDiscoveryCalls++;
+  }
+
+  @override
+  void stopDiscovery() {
+    stopDiscoveryCalls++;
+  }
+}
+
